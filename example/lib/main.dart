@@ -1,169 +1,105 @@
-import 'package:example/logic/counter_logic.dart';
-import 'package:example/logic/totdo_fetch.dart';
-import 'package:example/popsicle.dart';
-import 'package:example/ui/driving.dart';
-import 'package:example/ui/stream.dart';
-import 'package:example/ui/todo.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:popsicle/popsicle.dart';
 
-/// -----------------------------
-/// Main App
-/// -----------------------------
-void main() {
-  WidgetsFlutterBinding.ensureInitialized();
-  try {
-    Popsicle.boot(poplogic);
-  } catch (e, st) {
-    debugPrint('Bootstrap error: $e\n$st');
-  }
+import 'examples/intent_store_example.dart';
+import 'examples/async_store_example.dart';
+import 'examples/combined_async_example.dart';
+import 'examples/counter_consumer_example.dart';
+import 'examples/dependency_example.dart';
+import 'examples/params_example.dart';
+import 'examples/reactive_value_example.dart';
 
-  runApp(ProviderScope(child: MyApp()));
+void main() {
+  runApp(
+    const PopsicleScope(
+      child: PopsicleExampleApp(),
+    ),
+  );
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class PopsicleExampleApp extends StatelessWidget {
+  const PopsicleExampleApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Popsicle Demo',
-      theme: ThemeData(primarySwatch: Colors.blue),
-      home: DemoHomePage(),
+      title: 'Popsicle examples',
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        useMaterial3: true,
+      ),
+      home: const ExampleHomePage(),
     );
   }
 }
 
-/// -----------------------------
-/// DemoHomePage
-/// -----------------------------
-class DemoHomePage extends StatelessWidget {
-  const DemoHomePage({super.key});
+class ExampleHomePage extends StatelessWidget {
+  const ExampleHomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // 3️⃣ Get the logic instance
-    //final counter0 = CounterLogic.of<CounterLogic>().action<CounterLogic>();
-
-    final todo0 = Popsicle.use<TodoState>();
-    // 4️⃣ Add per-instance middleware
-    final counter = Popsicle.use<CounterLogic>();
-    final todo = Popsicle.use<TodoState>();
-    // 4️⃣ Add per-instance middleware
-    counter.use((current, next) {
-      print('CounterLogic changed: $current. -> $next');
-      if (next > 5) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Counter exceeded 5!'),
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
-      return next;
-    });
+    final examples = <({String title, String subtitle, Widget page})>[
+      (
+        title: 'Dependency',
+        subtitle: 'Plain DI plus a generic PopsicleBuilder boundary',
+        page: const DependencyExample(),
+      ),
+      (
+        title: 'ReactiveValue',
+        subtitle: 'Small scoped mutable state without creating a Store',
+        page: const ReactiveValueExample(),
+      ),
+      (
+        title: 'PopsicleConsumer',
+        subtitle: 'Store state + one-off side effects with one subscription',
+        page: const CounterConsumerExample(),
+      ),
+      (
+        title: 'Async Store',
+        subtitle: 'AsyncState inside a normal Store',
+        page: const AsyncStoreExample(),
+      ),
+      (
+        title: 'Combined async sources',
+        subtitle: 'Compose two independent async values with Async.combine2',
+        page: const CombinedAsyncExample(),
+      ),
+      (
+        title: 'IntentStore',
+        subtitle: 'Optional Action -> Store -> State workflow',
+        page: const IntentStoreExample(),
+      ),
+      (
+        title: 'Parameterized Store',
+        subtitle: 'StoreProvider.params without public family terminology',
+        page: const ParamsExample(),
+      ),
+    ];
 
     return Scaffold(
-      appBar: AppBar(
-        centerTitle: false,
-        title: const Text('Popsicle Demo'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.stream),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const CounterStreamPage(),
-                ),
-              );
-            },
-          ),
-
-          IconButton(
-            icon: const Icon(Icons.list),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const TodoModule()),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.card_giftcard),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => DrivingScreen()),
-              );
-            },
-          ),
-        ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(28.0),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // 5️⃣ Observe the counter state
-              PopsicleObserver<int>(
-                state: counter,
-                builder: (ctx, value) => Text(
-                  'Counter: $value',
-                  style: const TextStyle(fontSize: 28),
-                ),
-              ),
-
-              const SizedBox(height: 32),
-
-              // 6️⃣ Increment Button
-              ElevatedButton.icon(
-                icon: const Icon(Icons.add),
-                label: const Text('Increment'),
-                onPressed: () => counter.increment(),
-              ),
-
-              const SizedBox(height: 16),
-
-              // 7️⃣ Decrement Button
-              ElevatedButton.icon(
-                icon: const Icon(Icons.remove),
-                label: const Text('Decrement'),
-                onPressed: () => counter.decrement(),
-              ),
-
-              const SizedBox(height: 32),
-              // 7️⃣ stream listen Button
-              ElevatedButton.icon(
-                icon: const Icon(Icons.hearing),
-                label: const Text('Hear from State'),
-                onPressed: () => counter.listenOtherState(),
-              ),
-
-              const SizedBox(height: 32),
-
-              // 8️⃣ Read-only observer
-              PopsicleObserver<int>(
-                state: counter,
-                builder: (ctx, value) => Text(
-                  'Readonly: $value',
-                  style: const TextStyle(fontSize: 20, color: Colors.grey),
-                ),
-              ),
-
-              const SizedBox(height: 32),
-
-              // 9️⃣ Using alias: lick
-              counter.view((value) => Text('Alias lick: $value')),
-
-              //async
-            ],
-          ),
-        ),
+      appBar: AppBar(title: const Text('Popsicle 0.1.4 examples')),
+      body: ListView.separated(
+        padding: const EdgeInsets.all(16),
+        itemCount: examples.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 8),
+        itemBuilder: (context, index) {
+          final example = examples[index];
+          return Card(
+            child: ListTile(
+              title: Text(example.title),
+              subtitle: Text(example.subtitle),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => example.page,
+                  ),
+                );
+              },
+            ),
+          );
+        },
       ),
     );
   }
