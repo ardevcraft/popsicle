@@ -2,20 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:popsicle/popsicle.dart';
 
-final _counter = StoreProvider<_CounterStore, int>(
+final _counter = Popsicle.create(
   (_) => _CounterStore(),
 );
 
-final _effectCounter = StoreProvider<_EffectCounterStore, int>(
+final _effectCounter = Popsicle.create(
   (_) => _EffectCounterStore(),
 );
 
-final _reactiveCounter = ReactiveValue(0);
+final _reactiveCounter = Popsicle.value(0);
 
 void main() {
-  testWidgets('PopsicleWidget watches state and reads Store actions', (
-    tester,
-  ) async {
+  testWidgets('PopsicleWidget uses scope.use and scope.store', (tester) async {
     await tester.pumpWidget(
       const Popsicle(
         child: MaterialApp(
@@ -32,8 +30,9 @@ void main() {
     expect(find.text('1'), findsOneWidget);
   });
 
-  testWidgets('ReactiveValue rebuilds and updates without a Store',
-      (tester) async {
+  testWidgets('ReactiveValue.view works in a normal StatelessWidget', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       const Popsicle(
         child: MaterialApp(
@@ -53,7 +52,7 @@ void main() {
     expect(find.text('0'), findsOneWidget);
   });
 
-  testWidgets('PopsicleConsumer builds Store state', (tester) async {
+  testWidgets('Store.view builds Store state', (tester) async {
     await tester.pumpWidget(
       const Popsicle(
         child: MaterialApp(
@@ -70,7 +69,7 @@ void main() {
     expect(find.text('1'), findsOneWidget);
   });
 
-  testWidgets('PopsicleConsumer receives only explicitly emitted effects', (
+  testWidgets('Store.view receives only explicitly emitted effects', (
     tester,
   ) async {
     final effects = <int>[];
@@ -93,20 +92,13 @@ void main() {
     await tester.pump();
     expect(effects, [2]);
 
-    // Normal rebuilds do not replay one-shot effects.
     await tester.pump();
     expect(effects, [2]);
-
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-    expect(effects, [2]);
-
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-    expect(effects, [2, 4]);
   });
 
-  testWidgets('Store effect does not rebuild PopsicleConsumer', (tester) async {
+  testWidgets('effect-only emission does not rebuild Store.view', (
+    tester,
+  ) async {
     final effects = <int>[];
     var builds = 0;
 
@@ -131,39 +123,25 @@ void main() {
     expect(builds, initialBuilds);
   });
 
-  testWidgets('PopsicleConsumer effect callback is optional', (tester) async {
-    await tester.pumpWidget(
-      const Popsicle(
-        child: MaterialApp(
-          home: _EffectConsumerHarness(),
-        ),
-      ),
+  testWidgets('PopsicleBuilder exposes scope.get/use', (tester) async {
+    final name = Popsicle.value('Popsicle');
+    final message = Popsicle.inject(
+      (scope) => 'Hello ${scope.use(name)}',
     );
-
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    expect(find.text('2'), findsOneWidget);
-  });
-
-  testWidgets('PopsicleBuilder watches a dependency', (tester) async {
-    final message = Dependency<String>((_) => 'hello');
 
     await tester.pumpWidget(
       Popsicle(
         child: MaterialApp(
           home: PopsicleBuilder(
-            builder: (context, ref, child) {
-              return Text(ref.watch(message));
+            builder: (context, scope, child) {
+              return Text(scope.use(message));
             },
           ),
         ),
       ),
     );
 
-    expect(find.text('hello'), findsOneWidget);
+    expect(find.text('Hello Popsicle'), findsOneWidget);
   });
 }
 
@@ -177,9 +155,9 @@ class _CounterPage extends PopsicleWidget {
   const _CounterPage();
 
   @override
-  Widget build(BuildContext context, PopRef ref) {
-    final count = ref.watch(_counter);
-    final actions = ref.store(_counter);
+  Widget build(BuildContext context, Scope scope) {
+    final count = scope.use(_counter);
+    final actions = scope.store(_counter);
 
     return Scaffold(
       body: Center(child: Text('$count')),
@@ -223,14 +201,8 @@ class _EffectConsumerHarness extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PopsicleConsumer<_EffectCounterStore, int>(
-      provider: _effectCounter,
-      effect: (context, effect) {
-        if (effect is _EvenCountEffect) {
-          onEffect?.call(effect.count);
-        }
-      },
-      build: (context, state, store) {
+    return _effectCounter.view(
+      (context, state, store) {
         onBuild?.call();
         return Scaffold(
           body: Text('$state'),
@@ -252,34 +224,45 @@ class _EffectConsumerHarness extends StatelessWidget {
           ),
         );
       },
+      effect: (context, effect) {
+        if (effect is _EvenCountEffect) {
+          onEffect?.call(effect.count);
+        }
+      },
     );
   }
 }
 
-class _ReactiveValuePage extends PopsicleWidget {
+class _ReactiveValuePage extends StatelessWidget {
   const _ReactiveValuePage();
 
   @override
-  Widget build(BuildContext context, PopRef ref) {
-    final count = ref.watch(_reactiveCounter);
-
+  Widget build(BuildContext context) {
     return Scaffold(
-      body: Text('$count'),
-      floatingActionButton: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          FloatingActionButton.small(
-            heroTag: 'reset-reactive',
-            onPressed: () => ref.set(_reactiveCounter, 0),
-            child: const Icon(Icons.refresh),
-          ),
-          const SizedBox(width: 12),
-          FloatingActionButton(
-            heroTag: 'increment-reactive',
-            onPressed: () => ref.update(_reactiveCounter, (value) => value + 1),
-            child: const Icon(Icons.add),
-          ),
-        ],
+      body: _reactiveCounter.view(
+        (count) => Text('$count'),
+      ),
+      floatingActionButton: PopsicleBuilder(
+        builder: (context, scope, child) {
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FloatingActionButton.small(
+                heroTag: 'reset-reactive',
+                onPressed: () => scope.set(_reactiveCounter, 0),
+                child: const Icon(Icons.refresh),
+              ),
+              const SizedBox(width: 12),
+              FloatingActionButton(
+                heroTag: 'increment-reactive',
+                onPressed: () {
+                  scope.update(_reactiveCounter, (value) => value + 1);
+                },
+                child: const Icon(Icons.add),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

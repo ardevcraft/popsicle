@@ -1,135 +1,162 @@
-# Popsicle 0.1.4 API outline
+# Popsicle 3.0 Public API Outline
 
-## Public concepts
+## Core philosophy
 
-### Dependency<T>
-DI-only provider definition. Backed by Riverpod 2.6 `Provider` internally.
+```text
+UI = f(state)
 
-```dart
-final repo = Dependency<Repository>((ref) => RepositoryImpl(...));
+method / Intent -> Store -> State -> .view()
+                         `-> Effect -> one-shot UI work
 ```
 
-### Dependency.params<T, Arg>
-Parameterized DI definition. Backed by Riverpod 2.6 family mechanics but does
-not expose `family` in Popsicle syntax.
+## Recommended declaration namespace
+
+### `Popsicle.inject`
 
 ```dart
-final client = Dependency.params<ApiClient, String>(
-  (ref, tenantId) => ApiClient(tenantId),
+final api = Popsicle.inject(
+  (_) => ApiClient(),
+);
+
+final repository = Popsicle.inject(
+  (scope) => Repository(scope.get(api)),
 );
 ```
 
-### ReactiveValue<T>
-Small container-scoped mutable reactive state. It reuses the existing graph and
-does not require a Store class.
+### `Popsicle.value`
 
 ```dart
-final selectedTab = ReactiveValue(0);
-
-final tab = ref.watch(selectedTab);
-ref.set(selectedTab, 1);
-ref.update(selectedTab, (value) => value + 1);
+final counter = Popsicle.value(0);
 ```
 
-### Store<State>
-Reactive state object. First iteration uses StateNotifier's tested notification
-and disposal behavior underneath.
+### `Popsicle.create`
+
+```dart
+final counter = Popsicle.create(
+  (_) => CounterStore(),
+);
+```
+
+### `Popsicle.params`
+
+```dart
+final user = Popsicle.params(
+  (scope, int id) => UserStore(
+    id: id,
+    repository: scope.get(repository),
+  ),
+);
+```
+
+## Scope
+
+```dart
+scope.get(source); // non-reactive access
+scope.use(source); // reactive dependency
+```
+
+Additional extensions:
+
+```dart
+scope.store(storeSource);
+scope.select(storeSource, selector);
+scope.set(reactiveValue, next);
+scope.update(reactiveValue, update);
+```
+
+## State
+
+### `ReactiveValue<T>`
+
+```dart
+counter.view(
+  (value) => Text('$value'),
+);
+```
+
+### `Store<State>`
 
 ```dart
 class CounterStore extends Store<int> {
   CounterStore() : super(0);
+
   void increment() => emit(state + 1);
 }
 ```
 
-### ActionStore<State, Action>
-Optional structured action input. Simple Stores continue using ordinary methods.
+### `IntentStore<State, Intent>`
 
 ```dart
-class CounterStore extends ActionStore<int, CounterAction> {
-  CounterStore() : super(0);
+class CheckoutStore extends IntentStore<CheckoutState, CheckoutIntent> {
+  CheckoutStore() : super(const CheckoutState());
+
   @override
-  void onAction(CounterAction action) { /* emit state */ }
+  Future<void> onIntent(CheckoutIntent intent) async {}
 }
 ```
 
-### StoreProvider<Store, State>
-Stable graph identity for one Store.
+## Output channels
 
 ```dart
-final counter = StoreProvider<CounterStore, int>((_) => CounterStore());
+emit(nextState); // persistent/replayable state
+effect(value);   // one-shot/non-replayed effect
 ```
 
-### StoreProvider.params<Store, State, Arg>
-Parameterized Store identity.
+## UI
+
+Preferred:
 
 ```dart
-final student = StoreProvider.params<StudentStore, StudentState, String>(
-  (ref, id) => StudentStore(id, ref.read(repository)),
+reactiveValue.view((state) => UI);
+
+storeSource.view(
+  (context, state, store) => UI,
+  effect: (context, effect) {},
 );
 ```
 
-### AsyncState<T>
-Normal immutable state value for async resource/operation state. Multiple
-AsyncState values can coexist in one Store.
-
-### Async.combine2/3/4
-Derived composition of independently-owned async sources.
-
-### PopsicleScope
-Flutter bridge to the existing ProviderScope/container engine.
-
-### PopsicleWidget
-Full reactive widget with a `PopsicleWidgetRef`.
-
-### PopsicleBuilder
-Small generic reactive boundary for dependency/mixed low-level reads.
-
-### PopsicleConsumer<Store, State>
-Store-focused state + effect boundary.
-
-```dart
-PopsicleConsumer<CounterStore, int>(
-  provider: counter,
-  effect: (context, effect) { /* one-shot side effect */ },
-  build: (context, state, store) => Text('$state'),
-);
-```
-
-The Store explicitly emits effects through `effect(value)`. Effects are not
-derived from previous/next state, not retained, and not replayed by widget
-rebuilds. The `effect` callback is optional.
-
-`PopsicleConsumer` owns a state subscription for rendering and a dedicated
-Store-effect subscription for one-shot UI work.
-
-## Core UI interaction
+Explicit lower-level widgets:
 
 ```text
-ref.watch(provider)          reactive value/state
-ref.set(reactiveValue, value)    replace a ReactiveValue
-ref.update(reactiveValue, fn)    update a ReactiveValue
-ref.read(dependency)         non-reactive dependency value
-ref.store(storeProvider)     Store instance/actions
-ref.selectStore(...)         selective Store-state rebuild
-ref.listenStore(...)         low-level Store state listener
-PopsicleConsumer(...)        preferred Store state + effect API
+ReactiveBuilder
+PopsicleConsumer
+PopsicleWidget
+PopsicleBuilder
 ```
 
-## Deferred from the initial release
+## Async
 
-- DI engine rewrite
-- type-based dependency lookup
-- feature-scope abstraction
-- autoDispose public API redesign
-- FutureProvider/StreamProvider equivalents
-- AsyncStore/AsyncNotifier equivalents
-- strongly typed framework-level Effect generics
-- hooks package
-- code generation
+```dart
+AsyncState<T>
+Async.combine2(a, b)
+Async.combine3(a, b, c)
+Async.combine4(a, b, c, d)
+a.zip(b)
+```
 
-## Internal engine retained
+## Dart/testing
 
-Riverpod 2.6.1 container, provider elements, subscriptions, selectors,
-overrides, scheduling, family mechanics, and compatibility provider types are
-vendored under `lib/src/engine` and are not exported by `package:popsicle`.
+```dart
+final container = PopsicleContainer();
+
+container.get(source);
+container.store(storeSource);
+container.set(value, next);
+container.update(value, update);
+container.subscribe(source, listener);
+container.dispose();
+```
+
+## Advanced compatibility types
+
+These remain available but are not the primary application API:
+
+```text
+Dependency<T>
+Dependency.params
+StoreHandle<Store, State>
+StoreParams<Store, State, Arg>
+PopsicleOverride
+PopsicleSubscription
+PopsicleSource
+```

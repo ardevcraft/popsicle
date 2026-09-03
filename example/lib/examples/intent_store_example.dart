@@ -3,36 +3,36 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:popsicle/popsicle.dart';
 
-sealed class CounterAction {
-  const CounterAction();
+sealed class CounterIntent {
+  const CounterIntent();
 }
 
-final class IncrementAction extends CounterAction {
-  const IncrementAction();
+final class IncrementIntent extends CounterIntent {
+  const IncrementIntent();
 }
 
-final class ResetAction extends CounterAction {
-  const ResetAction();
+final class ResetIntent extends CounterIntent {
+  const ResetIntent();
 }
 
-class ActionCounterStore extends IntentStore<int, CounterAction> {
-  ActionCounterStore() : super(0);
+class IntentCounterStore extends IntentStore<int, CounterIntent> {
+  IntentCounterStore() : super(0);
 
   @override
-  FutureOr<void> onIntent(CounterAction action) {
-    switch (action) {
-      case IncrementAction():
+  FutureOr<void> onIntent(CounterIntent intent) {
+    switch (intent) {
+      case IncrementIntent():
         emit(state + 1);
         break;
-      case ResetAction():
+      case ResetIntent():
         emit(0);
         break;
     }
   }
 }
 
-final actionCounter = StoreProvider<ActionCounterStore, int>(
-  (_) => ActionCounterStore(),
+final intentCounter = Popsicle.create(
+  (_) => IntentCounterStore(),
 );
 
 class IntentStoreExample extends StatelessWidget {
@@ -43,9 +43,8 @@ class IntentStoreExample extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('IntentStore')),
       body: Center(
-        child: PopsicleConsumer<ActionCounterStore, int>(
-          provider: actionCounter,
-          build: (context, state, store) {
+        child: intentCounter.view(
+          (context, state, store) {
             return Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -58,11 +57,11 @@ class IntentStoreExample extends StatelessWidget {
                   spacing: 12,
                   children: [
                     FilledButton(
-                      onPressed: () => store.dispatch(const IncrementAction()),
+                      onPressed: () => store.dispatch(const IncrementIntent()),
                       child: const Text('Dispatch increment'),
                     ),
                     OutlinedButton(
-                      onPressed: () => store.dispatch(const ResetAction()),
+                      onPressed: () => store.dispatch(const ResetIntent()),
                       child: const Text('Reset'),
                     ),
                   ],

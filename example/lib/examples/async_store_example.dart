@@ -29,7 +29,7 @@ class MessageStore extends Store<AsyncState<String>> {
   }
 }
 
-final messageStore = StoreProvider<MessageStore, AsyncState<String>>(
+final messageStore = Popsicle.create(
   (_) => MessageStore(),
 );
 
@@ -41,16 +41,8 @@ class AsyncStoreExample extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Async Store')),
       body: Center(
-        child: PopsicleConsumer<MessageStore, AsyncState<String>>(
-          provider: messageStore,
-          effect: (context, effect) {
-            if (effect case MessageLoadFailed(:final error)) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Failed: $error')),
-              );
-            }
-          },
-          build: (context, asyncState, store) {
+        child: messageStore.view(
+          (context, asyncState, store) {
             return Padding(
               padding: const EdgeInsets.all(24),
               child: Column(
@@ -82,6 +74,13 @@ class AsyncStoreExample extends StatelessWidget {
                 ],
               ),
             );
+          },
+          effect: (context, effect) {
+            if (effect case MessageLoadFailed(:final error)) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Failed: $error')),
+              );
+            }
           },
         ),
       ),

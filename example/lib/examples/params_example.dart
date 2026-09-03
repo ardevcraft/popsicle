@@ -9,8 +9,8 @@ class ItemCounterStore extends Store<int> {
   void increment() => emit(state + 1);
 }
 
-final itemCounters = StoreProvider.params<ItemCounterStore, int, int>(
-  (_, itemId) => ItemCounterStore(itemId),
+final itemCounters = Popsicle.params(
+  (_, int itemId) => ItemCounterStore(itemId),
 );
 
 class ParamsExample extends StatelessWidget {
@@ -19,7 +19,7 @@ class ParamsExample extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('StoreProvider.params')),
+      appBar: AppBar(title: const Text('Popsicle.params')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: const [
@@ -39,12 +39,9 @@ class _CounterTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final provider = itemCounters(itemId);
-
     return Card(
-      child: PopsicleConsumer<ItemCounterStore, int>(
-        provider: provider,
-        build: (context, count, store) {
+      child: itemCounters(itemId).view(
+        (context, count, store) {
           return ListTile(
             title: Text('Item ${store.itemId}'),
             subtitle: Text('Count: $count'),

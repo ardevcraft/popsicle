@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:popsicle/popsicle.dart';
 
-import 'examples/intent_store_example.dart';
 import 'examples/async_store_example.dart';
 import 'examples/combined_async_example.dart';
 import 'examples/counter_consumer_example.dart';
 import 'examples/dependency_example.dart';
+import 'examples/intent_store_example.dart';
 import 'examples/params_example.dart';
 import 'examples/reactive_value_example.dart';
+
+final themeMode = Popsicle.value(ThemeMode.system);
 
 void main() {
   runApp(
@@ -17,11 +19,13 @@ void main() {
   );
 }
 
-class PopsicleExampleApp extends StatelessWidget {
+class PopsicleExampleApp extends PopsicleWidget {
   const PopsicleExampleApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, Scope scope) {
+    final mode = scope.use(themeMode);
+
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Popsicle examples',
@@ -29,6 +33,14 @@ class PopsicleExampleApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
+      darkTheme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.deepPurple,
+          brightness: Brightness.dark,
+        ),
+        useMaterial3: true,
+      ),
+      themeMode: mode,
       home: const ExampleHomePage(),
     );
   }
@@ -42,17 +54,17 @@ class ExampleHomePage extends StatelessWidget {
     final examples = <({String title, String subtitle, Widget page})>[
       (
         title: 'Dependency',
-        subtitle: 'Plain DI plus a generic PopsicleBuilder boundary',
+        subtitle: 'Popsicle.inject with scope.get / scope.use',
         page: const DependencyExample(),
       ),
       (
         title: 'ReactiveValue',
-        subtitle: 'Small scoped mutable state without creating a Store',
+        subtitle: 'Popsicle.value + value.view()',
         page: const ReactiveValueExample(),
       ),
       (
-        title: 'PopsicleConsumer',
-        subtitle: 'Store state + one-off side effects with one subscription',
+        title: 'Store view',
+        subtitle: 'Popsicle.create + state/effect UI projection',
         page: const CounterConsumerExample(),
       ),
       (
@@ -67,18 +79,41 @@ class ExampleHomePage extends StatelessWidget {
       ),
       (
         title: 'IntentStore',
-        subtitle: 'Optional Action -> Store -> State workflow',
+        subtitle: 'Optional Intent -> Store -> State workflow',
         page: const IntentStoreExample(),
       ),
       (
         title: 'Parameterized Store',
-        subtitle: 'StoreProvider.params without public family terminology',
+        subtitle: 'Popsicle.params with independent keyed state',
         page: const ParamsExample(),
       ),
     ];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Popsicle 0.1.4 examples')),
+      appBar: AppBar(
+        title: const Text('Popsicle examples'),
+        actions: [
+          PopsicleBuilder(
+            builder: (context, scope, child) {
+              final mode = scope.use(themeMode);
+              return IconButton(
+                tooltip: 'Toggle theme',
+                onPressed: () {
+                  scope.set(
+                    themeMode,
+                    mode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark,
+                  );
+                },
+                icon: Icon(
+                  mode == ThemeMode.dark
+                      ? Icons.light_mode_outlined
+                      : Icons.dark_mode_outlined,
+                ),
+              );
+            },
+          ),
+        ],
+      ),
       body: ListView.separated(
         padding: const EdgeInsets.all(16),
         itemCount: examples.length,

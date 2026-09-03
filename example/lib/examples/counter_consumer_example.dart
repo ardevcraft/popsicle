@@ -27,7 +27,7 @@ class CounterStore extends Store<int> {
   void reset() => emit(0);
 }
 
-final counterStore = StoreProvider<CounterStore, int>(
+final counterStore = Popsicle.create(
   (_) => CounterStore(),
 );
 
@@ -37,20 +37,10 @@ class CounterConsumerExample extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('PopsicleConsumer')),
+      appBar: AppBar(title: const Text('Store.view')),
       body: Center(
-        child: PopsicleConsumer<CounterStore, int>(
-          provider: counterStore,
-          effect: (context, effect) {
-            if (effect is CounterReachedLimit) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Counter reached ${effect.count}'),
-                ),
-              );
-            }
-          },
-          build: (context, count, store) {
+        child: counterStore.view(
+          (context, count, store) {
             return Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -80,6 +70,15 @@ class CounterConsumerExample extends StatelessWidget {
                 ),
               ],
             );
+          },
+          effect: (context, effect) {
+            if (effect is CounterReachedLimit) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Counter reached ${effect.count}'),
+                ),
+              );
+            }
           },
         ),
       ),

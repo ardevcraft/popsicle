@@ -1,14 +1,19 @@
-Popsicle 0.1.3
+Popsicle 3.0.0
 
 This package contains a vendored and adapted Riverpod 2.6.1 engine under
 lib/src/engine and lib/src/flutter_engine. Riverpod is licensed under the MIT
-License; see LICENSE and the original attribution retained in this project.
+License. The original copyright and license text are retained in LICENSE.
 
 Popsicle-specific public APIs include:
-- Dependency / Dependency.params
-- Store / ActionStore
-- StoreProvider / StoreProvider.params
-- AsyncState / Async.combine
-- PopsicleScope / PopsicleWidget / PopsicleStatefulWidget
-- PopsicleBuilder
-- Store-focused PopsicleConsumer with listener/listenWhen/buildWhen
+- Popsicle.inject / Popsicle.value / Popsicle.create / Popsicle.params
+- Scope.get / Scope.use
+- Dependency / ReactiveValue
+- Store / IntentStore
+- Store and ReactiveValue .view() projections
+- dedicated Store effect channel
+- AsyncState / Async.combine2/3/4
+- PopsicleWidget / PopsicleBuilder / PopsicleConsumer
+- PopsicleContainer testing and Dart-only helpers
+
+Popsicle preserves upstream attribution while presenting its own public API and
+project documentation.

@@ -4,43 +4,34 @@ export 'src/api/async_state.dart' show Async, AsyncState;
 export 'src/api/core_types.dart'
     show
         PopsicleContainer,
-        PopsicleNode,
-        PopsicleObserver,
         PopsicleOverride,
-        PopRef,
-        PopsicleSubscription;
+        PopsicleSource,
+        PopsicleSubscription,
+        Scope;
 export 'src/api/dependency.dart'
-    show
-        Dependency,
-        DependencyHandle,
-        DependencyParams,
-        DependencyParamsBuilder;
+    show Dependency, DependencyHandle, DependencyParams, DependencyParamsBuilder;
 export 'src/api/flutter_api.dart'
     show
+        Popsicle,
         PopsicleBuilder,
         PopsicleBuilderCallback,
         PopsicleConsumer,
-        Popsicle,
-        PopsicleState,
-        PopsicleStatefulWidget,
         PopsicleStoreBuild,
         PopsicleStoreEffect,
-        PopsicleWidget,
-        PopsicleRef,
-        PopsicleWidgetRefStoreExtension,
-        PopsicleWidgetRefReactiveValueExtension;
+        PopsicleStoreView,
+        PopsicleWidget;
 export 'src/api/reactive_value.dart'
     show
-        ReactiveValue,
         PopsicleContainerReactiveValueExtension,
-        PopsicleRefReactiveValueExtension;
+        PopsicleScopeReactiveValueExtension,
+        ReactiveBuilder,
+        ReactiveValue,
+        ReactiveValueView;
 export 'src/api/store.dart'
     show
         IntentStore,
-        PopsicleStoreRefExtension,
+        PopsicleContainerStoreExtension,
+        PopsicleScopeStoreExtension,
         Store,
-        StoreAccessor,
         StoreHandle,
-        StoreParams,
-        StoreParamsBuilder,
-        StoreProvider;
+        StoreParams;

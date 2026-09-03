@@ -81,7 +81,7 @@ class DashboardStore extends Store<DashboardState> {
   }
 }
 
-final dashboardStore = StoreProvider<DashboardStore, DashboardState>(
+final dashboardStore = Popsicle.create(
   (_) => DashboardStore(),
 );
 
@@ -93,20 +93,8 @@ class CombinedAsyncExample extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Combined async sources')),
       body: Center(
-        child: PopsicleConsumer<DashboardStore, DashboardState>(
-          provider: dashboardStore,
-          effect: (context, effect) {
-            if (effect is DashboardReady) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Both async sources are ready')),
-              );
-            } else if (effect is DashboardLoadFailed) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Dashboard failed: ${effect.error}')),
-              );
-            }
-          },
-          build: (context, state, store) {
+        child: dashboardStore.view(
+          (context, state, store) {
             final content = state.content;
 
             return Padding(
@@ -148,6 +136,17 @@ class CombinedAsyncExample extends StatelessWidget {
                 ],
               ),
             );
+          },
+          effect: (context, effect) {
+            if (effect is DashboardReady) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Both async sources are ready')),
+              );
+            } else if (effect is DashboardLoadFailed) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Dashboard failed: ${effect.error}')),
+              );
+            }
           },
         ),
       ),

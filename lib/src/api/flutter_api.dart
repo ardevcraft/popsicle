@@ -2,68 +2,100 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 
-import '../engine/riverpod.dart';
+import '../engine/engine.dart';
 import '../flutter_engine/consumer.dart';
 import '../flutter_engine/framework.dart';
 import 'core_types.dart';
+import 'dependency.dart';
 import 'reactive_value.dart';
 import 'store.dart';
 
-/// Flutter-side reference used by Popsicle widgets.
-typedef PopsicleRef = WidgetRef;
+Scope _scopeFromEngine(WidgetRef engine) {
+  return Scope(
+    get: <T>(source) => engine.read(engineSource(source)),
+    use: <T>(source) => engine.watch(engineSource(source)),
+  );
+}
 
-/// Root/scoped Flutter bridge for Popsicle's existing container engine.
+/// Root Flutter scope and declaration namespace for Popsicle.
 class Popsicle extends StatelessWidget {
   const Popsicle({
     super.key,
     this.overrides = const [],
-    this.observers,
     required this.child,
   });
 
   final List<PopsicleOverride> overrides;
-  final List<PopsicleObserver>? observers;
   final Widget child;
+
+  /// Declares a non-state dependency.
+  static Dependency<T> inject<T>(
+    T Function(Scope scope) create, {
+    String? name,
+  }) {
+    return Dependency<T>(create, name: name);
+  }
+
+  /// Declares a small scoped reactive value.
+  static ReactiveValue<T> value<T>(
+    T initialValue, {
+    String? name,
+  }) {
+    return ReactiveValue<T>(initialValue, name: name);
+  }
+
+  /// Declares a structured reactive Store.
+  static StoreHandle<StoreT, State>
+      create<StoreT extends Store<State>, State>(
+    StoreT Function(Scope scope) create, {
+    String? name,
+  }) {
+    return StoreProvider<StoreT, State>(create, name: name);
+  }
+
+  /// Declares parameterized Store state.
+  static StoreParams<StoreT, State, Arg>
+      params<StoreT extends Store<State>, State, Arg>(
+    StoreT Function(Scope scope, Arg arg) create, {
+    String? name,
+  }) {
+    return StoreProvider.params<StoreT, State, Arg>(create, name: name);
+  }
 
   @override
   Widget build(BuildContext context) {
     return ProviderScope(
-      overrides: overrides,
-      observers: observers,
+      overrides: overrides.map(engineOverride).toList(growable: false),
       child: child,
     );
   }
 }
 
-/// Stateless Popsicle widget with reactive access through [PopsicleRef].
-abstract class PopsicleWidget extends ConsumerWidget {
+/// Stateless-style Popsicle widget with scoped `get/use` access.
+abstract class PopsicleWidget extends ConsumerStatefulWidget {
   const PopsicleWidget({super.key});
 
+  Widget build(BuildContext context, Scope scope);
+
   @override
-  Widget build(BuildContext context, PopsicleRef ref);
+  ConsumerState<PopsicleWidget> createState() => _PopsicleWidgetState();
 }
 
-/// Stateful Popsicle widget.
-abstract class PopsicleStatefulWidget extends ConsumerStatefulWidget {
-  const PopsicleStatefulWidget({super.key});
+final class _PopsicleWidgetState extends ConsumerState<PopsicleWidget> {
+  @override
+  Widget build(BuildContext context) {
+    return widget.build(context, _scopeFromEngine(ref));
+  }
 }
-
-/// State base class for [PopsicleStatefulWidget].
-abstract class PopsicleState<T extends PopsicleStatefulWidget>
-    extends ConsumerState<T> {}
 
 /// Builder signature for [PopsicleBuilder].
 typedef PopsicleBuilderCallback = Widget Function(
   BuildContext context,
-  PopsicleRef ref,
+  Scope scope,
   Widget? child,
 );
 
-/// Creates a small generic reactive rebuild boundary.
-///
-/// Use [PopsicleConsumer] when rendering a [Store] and handling its one-shot
-/// effects together. [PopsicleBuilder] is intended for dependency-only or
-/// mixed low-level reads where a Store-specific consumer is unnecessary.
+/// Small generic reactive rebuild boundary.
 class PopsicleBuilder extends ConsumerWidget {
   const PopsicleBuilder({
     super.key,
@@ -75,8 +107,8 @@ class PopsicleBuilder extends ConsumerWidget {
   final Widget? child;
 
   @override
-  Widget build(BuildContext context, PopsicleRef ref) {
-    return builder(context, ref, child);
+  Widget build(BuildContext context, WidgetRef engine) {
+    return builder(context, _scopeFromEngine(engine), child);
   }
 }
 
@@ -89,56 +121,23 @@ typedef PopsicleStoreBuild<StoreT extends Store<State>, State> = Widget
 );
 
 /// Handles one-shot Store effects.
-///
-/// Effects are delivered exactly when the Store emits them. They are not
-/// reconstructed from state transitions and are never replayed on rebuild.
 typedef PopsicleStoreEffect = void Function(
   BuildContext context,
   Object effect,
 );
 
-/// Store-focused UI boundary with separate state and side-effect channels.
-///
-/// The public model intentionally stays small:
-///
-/// - [provider] identifies the Store.
-/// - [build] renders persistent Store state.
-/// - [effect] handles optional one-shot Store effects.
-///
-/// ```dart
-/// PopsicleConsumer(
-///   provider: counterStore,
-///   effect: (context, effect) {
-///     if (effect is CounterReachedLimit) {
-///       ScaffoldMessenger.of(context).showSnackBar(
-///         SnackBar(content: Text('Reached ${effect.count}')),
-///       );
-///     }
-///   },
-///   build: (context, state, store) {
-///     return FilledButton(
-///       onPressed: store.increment,
-///       child: Text('$state'),
-///     );
-///   },
-/// )
-/// ```
+/// Explicit Store widget used underneath the `.view()` API.
 class PopsicleConsumer<StoreT extends Store<State>, State>
     extends ConsumerStatefulWidget {
   const PopsicleConsumer({
     super.key,
-    required this.provider,
+    required this.source,
     required this.build,
     this.effect,
   });
 
-  /// Store definition consumed by this widget.
-  final StoreHandle<StoreT, State> provider;
-
-  /// Renders the latest persistent Store state.
+  final StoreHandle<StoreT, State> source;
   final PopsicleStoreBuild<StoreT, State> build;
-
-  /// Handles one-shot effects emitted by the Store.
   final PopsicleStoreEffect? effect;
 
   @override
@@ -156,39 +155,44 @@ class _PopsicleConsumerState<StoreT extends Store<State>, State>
   @override
   void initState() {
     super.initState();
-    _bind(widget.provider);
+    _bind(widget.source);
   }
 
   @override
   void didUpdateWidget(covariant PopsicleConsumer<StoreT, State> oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    if (oldWidget.provider != widget.provider) {
+    if (oldWidget.source != widget.source) {
       _unbind();
-      _bind(widget.provider);
+      _bind(widget.source);
       return;
     }
 
-    final latestStore = ref.read(widget.provider.notifier);
+    final engine = ref;
+    final provider = engineStore(widget.source);
+    final latestStore = engine.read(provider.notifier);
     if (!identical(latestStore, _store)) {
       _store = latestStore;
       _bindEffects(latestStore);
     }
   }
 
-  void _bind(StoreHandle<StoreT, State> provider) {
-    _state = ref.read(provider);
-    _store = ref.read(provider.notifier);
+  void _bind(StoreHandle<StoreT, State> source) {
+    final engine = ref;
+    final provider = engineStore(source);
+
+    _state = engine.read(provider);
+    _store = engine.read(provider.notifier);
     _bindEffects(_store);
 
-    _stateSubscription = ref.listenManual<State>(
+    _stateSubscription = engine.listenManual<State>(
       provider,
       (_, next) {
         if (!mounted) return;
 
         _state = next;
 
-        final latestStore = ref.read(provider.notifier);
+        final latestStore = engine.read(provider.notifier);
         if (!identical(latestStore, _store)) {
           _store = latestStore;
           _bindEffects(latestStore);
@@ -204,6 +208,7 @@ class _PopsicleConsumerState<StoreT extends Store<State>, State>
     if (previous != null) {
       unawaited(previous.cancel());
     }
+
     _effectSubscription = store.listenEffects((value) {
       if (!mounted) return;
       widget.effect?.call(context, value);
@@ -213,6 +218,7 @@ class _PopsicleConsumerState<StoreT extends Store<State>, State>
   void _unbind() {
     _stateSubscription?.close();
     _stateSubscription = null;
+
     final effectSubscription = _effectSubscription;
     if (effectSubscription != null) {
       unawaited(effectSubscription.cancel());
@@ -232,102 +238,23 @@ class _PopsicleConsumerState<StoreT extends Store<State>, State>
   }
 }
 
-// consumer UI = F(STATE)
-
-// Examaple: =======================
-// provider.view(
-//   effect: (context, effect) {
-//     switch (effect) {
-//       case UserProfileRefreshFailed(:final message):
-//         ScaffoldMessenger.of(context).showSnackBar(
-//           SnackBar(content: Text(message)),
-//         );
-
-//       case UserProfileLoaded():
-//         break;
-//     }
-//   },
-//   build: (context, state, store) {
-//     return RefreshIndicator(
-//       onRefresh: store.refresh,
-//       child: ...
-//     );
-//   },
-// );
-
-extension StoreProviderView<StoreType extends Store<State>, State>
-    on StoreProvider<StoreType, State> {
+/// Compact `UI = f(state)` projection for direct and parameterized Stores.
+extension PopsicleStoreView<StoreT extends Store<State>, State>
+    on StoreHandle<StoreT, State> {
   Widget view(
     Widget Function(
       BuildContext context,
       State state,
-      StoreType store,
+      StoreT store,
     ) build, {
-    void Function(
-      BuildContext context,
-      Object effect,
-    )? effect,
+    void Function(BuildContext context, Object effect)? effect,
     Key? key,
   }) {
-    return PopsicleConsumer<StoreType, State>(
+    return PopsicleConsumer<StoreT, State>(
       key: key,
-      provider: this,
+      source: this,
       effect: effect,
       build: build,
     );
-  }
-}
-
-/// OR,
-///
-// provider.view(
-//   build: (context, state, store) {
-//     return Text(state.toString());
-//   },
-// );
-
-/// Store-specific conveniences on Flutter's Popsicle reference.
-extension PopsicleWidgetRefStoreExtension on WidgetRef {
-  /// Reads the Store instance for invoking actions without rebuilding.
-  StoreT store<StoreT extends Store<State>, State>(
-    StoreHandle<StoreT, State> provider,
-  ) {
-    return read(provider.notifier);
-  }
-
-  /// Watches only a projection of a Store's state.
-  Selected selectStore<StoreT extends Store<State>, State, Selected>(
-    StoreHandle<StoreT, State> provider,
-    Selected Function(State state) selector,
-  ) {
-    return watch(provider.select(selector));
-  }
-
-  /// Low-level Store state listener.
-  ///
-  /// Prefer [PopsicleConsumer] for UI side effects. Store effects use a
-  /// dedicated one-shot channel and are not derived from this listener.
-  void listenStore<StoreT extends Store<State>, State>(
-    StoreHandle<StoreT, State> provider,
-    void Function(State? previous, State next) listener, {
-    void Function(Object error, StackTrace stackTrace)? onError,
-  }) {
-    listen(provider, listener, onError: onError);
-  }
-}
-
-/// Mutation helpers for [ReactiveValue] in Flutter widgets.
-extension PopsicleWidgetRefReactiveValueExtension on WidgetRef {
-  /// Replaces the current reactive value.
-  void set<T>(ReactiveValue<T> reactiveValue, T next) {
-    read(reactiveValue.notifier).state = next;
-  }
-
-  /// Updates the current reactive value and returns the result.
-  T update<T>(
-    ReactiveValue<T> reactiveValue,
-    T Function(T current) update,
-  ) {
-    return read(reactiveValue.notifier).update(update);
   }
 }

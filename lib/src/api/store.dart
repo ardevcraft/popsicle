@@ -2,37 +2,26 @@ import 'dart:async';
 
 import 'package:meta/meta.dart';
 
-import '../engine/riverpod.dart';
+import '../engine/engine.dart';
 import 'core_types.dart';
 
-/// Base class for reactive Popsicle state.
-///
-/// A Store owns one immutable state value and exposes ordinary methods/actions
-/// that update it. Async work does not require a different Store type.
-///
-/// Stores also expose a dedicated one-shot effect channel. Use [effect] for
-/// transient UI work such as snackbars, navigation, dialogs, or launching URLs.
-/// Effects are not retained, replayed, or used to rebuild widgets.
+/// Base class for structured reactive Popsicle state.
 abstract class Store<State> extends StateNotifier<State> {
   Store(super.initialState);
 
   final StreamController<Object> _effects =
       StreamController<Object>.broadcast(sync: true);
 
-  /// Current immutable state exposed by this Store.
   @override
   State get state => super.state;
 
-  /// Emits the next persistent state and notifies state listeners.
+  /// Emits the next persistent state.
   @protected
   void emit(State next) {
     super.state = next;
   }
 
   /// Emits a one-shot side effect.
-  ///
-  /// Effects are delivered only to listeners that are active at emission time.
-  /// They are never cached or replayed to future listeners.
   @protected
   void effect(Object value) {
     if (!_effects.isClosed) {
@@ -41,10 +30,6 @@ abstract class Store<State> extends StateNotifier<State> {
   }
 
   /// Low-level subscription to one-shot Store effects.
-  ///
-  /// Flutter UI should normally use `PopsicleConsumer` instead of subscribing
-  /// directly. This method is public so non-widget orchestration and tests can
-  /// observe effects without depending on Flutter.
   StreamSubscription<Object> listenEffects(
     void Function(Object effect) listener, {
     Function? onError,
@@ -52,7 +37,6 @@ abstract class Store<State> extends StateNotifier<State> {
     return _effects.stream.listen(listener, onError: onError);
   }
 
-  /// Alias for [state].
   State get value => state;
 
   @override
@@ -62,100 +46,148 @@ abstract class Store<State> extends StateNotifier<State> {
   }
 }
 
-/// Optional action-driven Store for workflows that benefit from an explicit
-/// `Action -> Store -> State` flow.
-///
-/// Simple Stores should continue exposing ordinary methods; actions are not
-/// required for basic state management.
-abstract class IntentStore<State, Action> extends Store<State> {
+/// Optional intent-driven Store for explicit `Intent -> Store -> State` flows.
+abstract class IntentStore<State, Intent> extends Store<State> {
   IntentStore(super.initialState);
 
-  FutureOr<void> dispatch(Action action) => onIntent(action);
+  FutureOr<void> dispatch(Intent intent) => onIntent(intent);
 
   @protected
-  FutureOr<void> onIntent(Action action);
+  FutureOr<void> onIntent(Intent intent);
 }
 
-/// Provides a [Store] to Popsicle's dependency graph.
+/// Popsicle-owned handle for one scoped Store declaration.
 ///
-/// Watching this provider returns the Store's current state. Use `ref.store(...)`
-/// to obtain the Store instance and invoke its actions.
-class StoreProvider<StoreT extends Store<State>, State>
-    extends StateNotifierProvider<StoreT, State> {
-  StoreProvider(
-    StoreT Function(PopRef<State> ref) create, {
-    super.name,
-    super.dependencies,
-  }) : super(
-          (ref) => create(ref),
-        );
+/// Prefer `Popsicle.create(...)` rather than constructing this directly.
+class StoreHandle<StoreT extends Store<State>, State>
+    implements PopsicleSource<State> {
+  @internal
+  const StoreHandle.engine(this._delegate);
 
-  /// Parameterized Store creation using Riverpod's mature family machinery
-  /// internally, exposed as the clearer `.params` API.
-  static const params = StoreParamsBuilder();
+  final StateNotifierProvider<StoreT, State> _delegate;
 
-  /// Alias for the underlying notifier handle.
-  StoreAccessor<StoreT> get store => notifier;
-}
+  @override
+  @internal
+  Object get engine => _delegate;
 
-/// Builder used by [StoreProvider.params].
-final class StoreParamsBuilder {
-  const StoreParamsBuilder();
-
-  StoreParams<StoreT, State, Arg> call<StoreT extends Store<State>, State, Arg>(
-    StoreT Function(PopRef<State> ref, Arg arg) create, {
-    String? name,
-    Iterable<PopsicleNode>? dependencies,
-  }) {
-    return StoreParams<StoreT, State, Arg>._(
-      StateNotifierProviderFamily<StoreT, State, Arg>(
-        (ref, arg) => create(ref, arg),
-        name: name,
-        dependencies: dependencies,
+  /// Overrides Store construction in a Popsicle scope/container.
+  PopsicleOverride overrideWith(StoreT Function(Scope scope) create) {
+    return PopsicleOverride.engine(
+      _delegate.overrideWith(
+        (engine) => create(scopeFromEngine(engine)),
       ),
     );
   }
 }
 
-/// Callable parameterized Store definition.
+@internal
+StateNotifierProvider<StoreT, State>
+    engineStore<StoreT extends Store<State>, State>(
+  StoreHandle<StoreT, State> source,
+) {
+  return source._delegate;
+}
+
+/// Advanced compatibility declaration type.
+///
+/// New code should prefer `Popsicle.create(...)`.
+final class StoreProvider<StoreT extends Store<State>, State>
+    extends StoreHandle<StoreT, State> {
+  StoreProvider(
+    StoreT Function(Scope scope) create, {
+    String? name,
+  }) : super.engine(
+          StateNotifierProvider<StoreT, State>(
+            (engine) => create(scopeFromEngine(engine)),
+            name: name,
+          ),
+        );
+
+  static const params = StoreParamsBuilder();
+}
+
+/// Builder used by `Popsicle.params` and the advanced `StoreProvider.params`.
+final class StoreParamsBuilder {
+  const StoreParamsBuilder();
+
+  StoreParams<StoreT, State, Arg> call<StoreT extends Store<State>, State, Arg>(
+    StoreT Function(Scope scope, Arg arg) create, {
+    String? name,
+  }) {
+    return StoreParams<StoreT, State, Arg>._(
+      StateNotifierProviderFamily<StoreT, State, Arg>(
+        (engine, arg) => create(scopeFromEngine(engine), arg),
+        name: name,
+      ),
+    );
+  }
+}
+
+/// Callable parameterized Store declaration returned by `Popsicle.params`.
 final class StoreParams<StoreT extends Store<State>, State, Arg> {
   const StoreParams._(this._delegate);
 
   final StateNotifierProviderFamily<StoreT, State, Arg> _delegate;
 
-  StoreHandle<StoreT, State> call(Arg arg) => _delegate(arg);
-
-  /// Advanced graph node for declaring scoped dependency relationships.
-  PopsicleNode get node => _delegate;
+  StoreHandle<StoreT, State> call(Arg arg) {
+    return StoreHandle<StoreT, State>.engine(_delegate(arg));
+  }
 
   PopsicleOverride overrideWith(
-    StoreT Function(PopRef<State> ref, Arg arg) create,
+    StoreT Function(Scope scope, Arg arg) create,
   ) {
-    return _delegate.overrideWith((ref, arg) => create(ref, arg));
+    return PopsicleOverride.engine(
+      _delegate.overrideWith(
+        (engine, arg) => create(scopeFromEngine(engine), arg),
+      ),
+    );
   }
 }
 
-/// Public handle returned from a parameterized Store.
-typedef StoreHandle<StoreT extends StateNotifier<State>, State>
-    = StateNotifierProvider<StoreT, State>;
-
-/// Read-only provider handle for obtaining the Store instance.
-typedef StoreAccessor<StoreT> = AlwaysAliveRefreshable<StoreT>;
-
-/// Popsicle conveniences for interacting with a Store provider from a Ref.
-extension PopsicleStoreRefExtension on Ref {
-  /// Reads the Store instance without subscribing to state changes.
+/// Store conveniences on [Scope].
+extension PopsicleScopeStoreExtension on Scope {
+  /// Returns the Store instance without subscribing to state changes.
   StoreT store<StoreT extends Store<State>, State>(
-    StoreHandle<StoreT, State> provider,
+    StoreHandle<StoreT, State> source,
   ) {
-    return read(provider.notifier);
+    return get(_StoreAccessor<StoreT, State>(source));
   }
 
-  /// Watches only a selected projection of Store state.
-  Selected selectStore<StoreT extends Store<State>, State, Selected>(
-    StoreHandle<StoreT, State> provider,
+  /// Observes only a selected projection of Store state.
+  Selected select<StoreT extends Store<State>, State, Selected>(
+    StoreHandle<StoreT, State> source,
     Selected Function(State state) selector,
   ) {
-    return watch(provider.select(selector));
+    return use(_StoreSelection<StoreT, State, Selected>(source, selector));
   }
+}
+
+/// Store conveniences for Dart-only [PopsicleContainer] usage.
+extension PopsicleContainerStoreExtension on PopsicleContainer {
+  StoreT store<StoreT extends Store<State>, State>(
+    StoreHandle<StoreT, State> source,
+  ) {
+    return get(_StoreAccessor<StoreT, State>(source));
+  }
+}
+
+final class _StoreAccessor<StoreT extends Store<State>, State>
+    implements PopsicleSource<StoreT> {
+  const _StoreAccessor(this.source);
+
+  final StoreHandle<StoreT, State> source;
+
+  @override
+  Object get engine => engineStore(source).notifier;
+}
+
+final class _StoreSelection<StoreT extends Store<State>, State, Selected>
+    implements PopsicleSource<Selected> {
+  _StoreSelection(this.source, this.selector);
+
+  final StoreHandle<StoreT, State> source;
+  final Selected Function(State state) selector;
+
+  @override
+  Object get engine => engineStore(source).select(selector);
 }

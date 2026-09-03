@@ -1,82 +1,116 @@
-# Popsicle 0.1.4 migration notes
+# Migrating to Popsicle 3.0
 
-This is an API-first migration from Riverpod 2.6.1, not a full engine rewrite.
+Popsicle 3.0 simplifies the public vocabulary around one declaration namespace and one scoped dependency context.
 
-## Initial mapping
+## Declaration migration
 
-| Riverpod 2.6.1 | Popsicle 0.1.4 |
+| Previous API | Popsicle 3.0 recommended API |
 | --- | --- |
-| `Provider<T>` | `Dependency<T>` |
-| `Provider.family<T, Arg>` | `Dependency.params<T, Arg>` |
-| `StateProvider<T>` | `ReactiveValue<T>` |
-| `StateNotifier<T>` | `Store<T>` |
-| `StateNotifierProvider<S, T>` | `StoreProvider<S, T>` |
-| `StateNotifierProvider.family` | `StoreProvider.params` |
-| `ProviderScope` | `PopsicleScope` |
-| `ProviderContainer` | `PopsicleContainer` |
-| `ConsumerWidget` | `PopsicleWidget` |
-| `Consumer` | `PopsicleBuilder` |
-| `WidgetRef` | `PopsicleWidgetRef` |
-| `provider.notifier` | `ref.store(provider)` |
-| `provider.select(...)` | `ref.selectStore(provider, ...)` |
-| `ref.listen(store, ...)` for UI effects | `Store.effect(...)` + `PopsicleConsumer(effect: ...)` |
+| `Dependency((ref) => ...)` | `Popsicle.inject((scope) => ...)` |
+| `ReactiveValue(value)` | `Popsicle.value(value)` |
+| `StoreProvider((ref) => ...)` | `Popsicle.create((scope) => ...)` |
+| `StoreProvider.params(...)` | `Popsicle.params(...)` |
 
-## Not migrated into the public API yet
+The underlying declaration classes remain available for advanced compatibility, but new code should prefer `Popsicle.*`.
 
-- FutureProvider
-- StreamProvider
-- Notifier/NotifierProvider
-- AsyncNotifier/AsyncNotifierProvider
-- ChangeNotifierProvider
-- autoDispose variants
-- public family terminology
-- code-generation APIs
-
-The source remains vendored where necessary so behavior can be migrated
-incrementally without destabilizing the first API iteration.
-
-
-## PopsicleConsumer in 0.1.3
-
-`PopsicleConsumer` no longer derives UI side effects by comparing Store state.
-Stores emit one-shot effects explicitly:
+## Reference migration
 
 ```dart
-class SaveStore extends Store<SaveState> {
-  SaveStore() : super(const SaveState());
+// Before
+ref.read(apiClient)
+ref.watch(themeMode)
+```
 
-  Future<void> save() async {
-    // update persistent state with emit(...)
-    effect(const SaveSucceeded());
+```dart
+// 3.0
+scope.get(apiClient)
+scope.use(themeMode)
+```
+
+Meaning:
+
+```text
+get = access without a reactive relationship
+use = access and depend on future changes
+```
+
+## Store access
+
+```dart
+// Before
+final state = ref.watch(counter);
+final store = ref.store(counter);
+```
+
+```dart
+// 3.0 low-level widget
+final state = scope.use(counter);
+final store = scope.store(counter);
+```
+
+Most UI can remove both lookups entirely by using `.view()`:
+
+```dart
+counter.view(
+  (context, state, store) {
+    return Text('$state');
+  },
+);
+```
+
+## ReactiveValue UI
+
+```dart
+// Before
+class CounterView extends PopsicleWidget {
+  Widget build(BuildContext context, PopRef ref) {
+    final count = ref.watch(counter);
+    return Text('$count');
   }
 }
 ```
 
-UI consumes state and effects separately:
-
 ```dart
-PopsicleConsumer(
-  provider: saveStore,
-  effect: (context, effect) { /* navigate/snackbar/dialog */ },
-  build: (context, state, store) { /* render state */ },
-);
+// 3.0
+class CounterView extends StatelessWidget {
+  Widget build(BuildContext context) {
+    return counter.view(
+      (count) => Text('$count'),
+    );
+  }
+}
 ```
 
-This replaces the 0.1.2 `listener`, `listenWhen`, and `buildWhen` consumer API.
-
-## ReactiveValue in 0.1.4
-
-0.1.4 intentionally keeps the 0.1.3 architecture unchanged and adds only a
-small-value primitive:
+Mutation:
 
 ```dart
-final selectedTab = ReactiveValue(0);
-
-final tab = ref.watch(selectedTab);
-ref.set(selectedTab, 2);
-ref.update(selectedTab, (value) => value + 1);
+scope.set(counter, 0);
+scope.update(counter, (value) => value + 1);
 ```
 
-Use `ReactiveValue` for isolated scalar/simple values. Keep using `Store` for
-structured state, actions, async workflows, and one-shot effects.
+## PopsicleWidget
 
+```dart
+class Header extends PopsicleWidget {
+  @override
+  Widget build(BuildContext context, Scope scope) {
+    final theme = scope.use(themeMode);
+    return Text('$theme');
+  }
+}
+```
+
+
+## IntentStore
+
+`IntentStore` is the current name for the optional structured intent workflow.
+
+```text
+Intent -> IntentStore -> State -> UI
+```
+
+Simple Stores should continue using normal Dart methods.
+
+## Versioning
+
+The public reference/declaration syntax is a breaking API change, so the publishable package is versioned as **3.0.0**.

@@ -1,54 +1,37 @@
 import 'package:flutter/widgets.dart';
+import 'package:meta/meta.dart';
 
-import '../engine/riverpod.dart';
+import '../engine/engine.dart';
 import '../flutter_engine/consumer.dart';
 import 'core_types.dart';
+import 'store.dart';
 
 /// A lightweight scoped reactive value.
 ///
-/// Use [ReactiveValue] for simple mutable state that does not justify creating
-/// a full Store.
-///
-/// The value is owned by Popsicle's container graph, so the same declaration
-/// can hold independent state in different [PopsicleContainer]s.
-///
-/// ```dart
-/// final counter = ReactiveValue(0);
-///
-/// final count = ref.watch(counter);
-/// ref.update(counter, (value) => value + 1);
-/// ```
-///
-/// For lightweight UI rendering:
-///
-/// ```dart
-/// counter.view(
-///   (count) => Text('$count'),
-/// );
-/// ```
-class ReactiveValue<T> extends StateProvider<T> {
+/// Prefer `Popsicle.value(initialValue)` for declarations.
+final class ReactiveValue<T> implements PopsicleSource<T> {
   ReactiveValue(
     T initialValue, {
     String? name,
-  }) : super(
+  }) : _delegate = StateProvider<T>(
           (_) => initialValue,
           name: name,
         );
+
+  final StateProvider<T> _delegate;
+
+  @override
+  @internal
+  Object get engine => _delegate;
+
+  PopsicleOverride overrideWith(T value) {
+    return PopsicleOverride.engine(
+      _delegate.overrideWith((_) => value),
+    );
+  }
 }
 
 /// Builds UI whenever a [ReactiveValue] changes.
-///
-/// Unlike [PopsicleWidget], this can be used inside any normal Flutter widget
-/// as long as it is below a Popsicle scope.
-///
-/// ```dart
-/// ReactiveBuilder(
-///   value: counter,
-///   builder: (context, count) {
-///     return Text('$count');
-///   },
-/// );
-/// ```
 class ReactiveBuilder<T> extends ConsumerWidget {
   const ReactiveBuilder({
     super.key,
@@ -57,87 +40,66 @@ class ReactiveBuilder<T> extends ConsumerWidget {
   });
 
   final ReactiveValue<T> value;
-
-  final Widget Function(
-    BuildContext context,
-    T value,
-  ) builder;
+  final Widget Function(BuildContext context, T value) builder;
 
   @override
-  Widget build(
-    BuildContext context,
-    WidgetRef ref,
-  ) {
-    final current = ref.watch(value);
-
+  Widget build(BuildContext context, WidgetRef engine) {
+    final current = engine.watch(engineSource(value));
     return builder(context, current);
   }
 }
 
-/// Convenient UI projection for a [ReactiveValue].
-///
-/// This follows Popsicle's:
-///
-/// ```text
-/// UI = f(state)
-/// ```
-///
-/// Example:
-///
-/// ```dart
-/// counter.view(
-///   (count) => Text('$count'),
-/// );
-/// ```
+/// Compact `UI = f(state)` projection for a [ReactiveValue].
 extension ReactiveValueView<T> on ReactiveValue<T> {
   Widget view(
-    Widget Function(T value) builder,
-  ) {
+    Widget Function(T value) builder, {
+    Key? key,
+  }) {
     return ReactiveBuilder<T>(
+      key: key,
       value: this,
       builder: (_, value) => builder(value),
     );
   }
 }
 
-/// Mutation helpers for [ReactiveValue] inside Popsicle factories/widgets.
-extension PopsicleRefReactiveValueExtension<State> on Ref<State> {
-  /// Replaces the current value.
-  void set<T>(
-    ReactiveValue<T> reactiveValue,
-    T next,
-  ) {
-    read(reactiveValue.notifier).state = next;
+/// Mutation helpers for [ReactiveValue] on [Scope].
+extension PopsicleScopeReactiveValueExtension on Scope {
+  void set<T>(ReactiveValue<T> reactiveValue, T next) {
+    final provider = reactiveValue.engine as StateProvider<T>;
+    get(_ReactiveController<T>(provider)).state = next;
   }
 
-  /// Updates the current value from its previous value and returns the result.
   T update<T>(
     ReactiveValue<T> reactiveValue,
     T Function(T current) update,
   ) {
-    return read(
-      reactiveValue.notifier,
-    ).update(update);
+    final provider = reactiveValue.engine as StateProvider<T>;
+    return get(_ReactiveController<T>(provider)).update(update);
   }
 }
 
 /// Dart-only mutation helpers for [ReactiveValue].
 extension PopsicleContainerReactiveValueExtension on PopsicleContainer {
-  /// Replaces the current value in this container.
-  void set<T>(
-    ReactiveValue<T> reactiveValue,
-    T next,
-  ) {
-    read(reactiveValue.notifier).state = next;
+  void set<T>(ReactiveValue<T> reactiveValue, T next) {
+    final provider = reactiveValue.engine as StateProvider<T>;
+    get(_ReactiveController<T>(provider)).state = next;
   }
 
-  /// Updates the current value in this container and returns the result.
   T update<T>(
     ReactiveValue<T> reactiveValue,
     T Function(T current) update,
   ) {
-    return read(
-      reactiveValue.notifier,
-    ).update(update);
+    final provider = reactiveValue.engine as StateProvider<T>;
+    return get(_ReactiveController<T>(provider)).update(update);
   }
+}
+
+final class _ReactiveController<T> implements PopsicleSource<StateController<T>> {
+  const _ReactiveController(this.provider);
+
+  final StateProvider<T> provider;
+
+  @override
+  Object get engine => provider.notifier;
 }

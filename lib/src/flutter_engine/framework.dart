@@ -219,7 +219,7 @@ class ProviderScopeState extends State<ProviderScope> {
     if (oldWidget.parent != widget.parent) {
       FlutterError.reportError(
         FlutterErrorDetails(
-          library: 'flutter_riverpod',
+          library: 'popsicle',
           exception: UnsupportedError(
             'Changing ProviderScope.parent is not supported',
           ),

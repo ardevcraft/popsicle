@@ -3,43 +3,81 @@ import 'package:popsicle/popsicle.dart';
 
 void main() {
   group('Dependency', () {
-    test('resolves a dependency', () {
-      final value = Dependency<int>((_) => 42);
+    test('Popsicle.inject resolves a dependency', () {
+      final value = Popsicle.inject((_) => 42);
       final container = PopsicleContainer();
       addTearDown(container.dispose);
 
-      expect(container.read(value), 42);
+      expect(container.get(value), 42);
     });
 
-    test('params resolves values per argument', () {
+    test('scope.get composes dependencies', () {
+      final api = Popsicle.inject((_) => 'api');
+      final service = Popsicle.inject(
+        (scope) => '${scope.get(api)}-service',
+      );
+      final container = PopsicleContainer();
+      addTearDown(container.dispose);
+
+      expect(container.get(service), 'api-service');
+    });
+
+    test('scope.use creates a reactive dependency', () {
+      final selected = Popsicle.value(1);
+      final doubled = Popsicle.inject(
+        (scope) => scope.use(selected) * 2,
+      );
+      final container = PopsicleContainer();
+      addTearDown(container.dispose);
+
+      expect(container.get(doubled), 2);
+
+      container.set(selected, 4);
+      expect(container.get(doubled), 8);
+    });
+
+
+    test('PopsicleOverride replaces a dependency without engine types', () {
+      final api = Popsicle.inject((_) => 'prod');
+      final container = PopsicleContainer(
+        overrides: [
+          api.overrideWith((_) => 'test'),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      expect(container.get(api), 'test');
+    });
+
+    test('Dependency.params resolves values per argument', () {
       final label = Dependency.params<String, int>(
         (_, id) => 'item-$id',
       );
       final container = PopsicleContainer();
       addTearDown(container.dispose);
 
-      expect(container.read(label(1)), 'item-1');
-      expect(container.read(label(2)), 'item-2');
+      expect(container.get(label(1)), 'item-1');
+      expect(container.get(label(2)), 'item-2');
     });
   });
 
   group('ReactiveValue', () {
-    test('stores simple mutable state inside a container', () {
-      final counter = ReactiveValue(0);
+    test('Popsicle.value stores mutable state inside a container', () {
+      final counter = Popsicle.value(0);
       final container = PopsicleContainer();
       addTearDown(container.dispose);
 
-      expect(container.read(counter), 0);
+      expect(container.get(counter), 0);
 
       container.update(counter, (value) => value + 1);
-      expect(container.read(counter), 1);
+      expect(container.get(counter), 1);
 
       container.set(counter, 10);
-      expect(container.read(counter), 10);
+      expect(container.get(counter), 10);
     });
 
     test('same declaration has independent state per container', () {
-      final counter = ReactiveValue(0);
+      final counter = Popsicle.value(0);
       final first = PopsicleContainer();
       final second = PopsicleContainer();
       addTearDown(first.dispose);
@@ -47,22 +85,35 @@ void main() {
 
       first.set(counter, 7);
 
-      expect(first.read(counter), 7);
-      expect(second.read(counter), 0);
+      expect(first.get(counter), 7);
+      expect(second.get(counter), 0);
     });
   });
 
   group('Store', () {
-    test('emits state through StoreProvider', () {
-      final counter = StoreProvider<CounterStore, int>(
+    test('Popsicle.create emits Store state', () {
+      final counter = Popsicle.create(
         (_) => CounterStore(0),
       );
       final container = PopsicleContainer();
       addTearDown(container.dispose);
 
-      expect(container.read(counter), 0);
-      container.read(counter.store).increment();
-      expect(container.read(counter), 1);
+      expect(container.get(counter), 0);
+      container.store(counter).increment();
+      expect(container.get(counter), 1);
+    });
+
+
+    test('StoreHandle override keeps the public API Popsicle-owned', () {
+      final counter = Popsicle.create((_) => CounterStore(0));
+      final container = PopsicleContainer(
+        overrides: [
+          counter.overrideWith((_) => CounterStore(10)),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      expect(container.get(counter), 10);
     });
 
     test('Store effects are one-shot and independent from state', () {
@@ -80,22 +131,22 @@ void main() {
       expect(effects, ['notice', 'notice']);
     });
 
-    test('ActionStore dispatches explicit actions', () async {
-      final provider = StoreProvider<ActionCounterStore, int>(
-        (_) => ActionCounterStore(),
+    test('IntentStore dispatches explicit intents', () async {
+      final source = Popsicle.create(
+        (_) => IntentCounterStore(),
       );
       final container = PopsicleContainer();
       addTearDown(container.dispose);
 
-      final store = container.read(provider.store);
-      await store.dispatch(const IncrementAction());
+      final store = container.store(source);
+      await store.dispatch(const IncrementIntent());
 
-      expect(container.read(provider), 1);
+      expect(container.get(source), 1);
     });
 
-    test('params creates argument-aware Store handles', () {
-      final counters = StoreProvider.params<CounterStore, int, int>(
-        (_, initial) => CounterStore(initial),
+    test('Popsicle.params creates argument-aware Store handles', () {
+      final counters = Popsicle.params(
+        (_, int initial) => CounterStore(initial),
       );
       final container = PopsicleContainer();
       addTearDown(container.dispose);
@@ -103,12 +154,12 @@ void main() {
       final ten = counters(10);
       final twenty = counters(20);
 
-      expect(container.read(ten), 10);
-      expect(container.read(twenty), 20);
+      expect(container.get(ten), 10);
+      expect(container.get(twenty), 20);
 
-      container.read(ten.notifier).increment();
-      expect(container.read(ten), 11);
-      expect(container.read(twenty), 20);
+      container.store(ten).increment();
+      expect(container.get(ten), 11);
+      expect(container.get(twenty), 20);
     });
   });
 
@@ -170,22 +221,23 @@ class CounterStore extends Store<int> {
   void increment() => emit(state + 1);
 }
 
-sealed class CounterAction {
-  const CounterAction();
+sealed class CounterIntent {
+  const CounterIntent();
 }
 
-final class IncrementAction extends CounterAction {
-  const IncrementAction();
+final class IncrementIntent extends CounterIntent {
+  const IncrementIntent();
 }
 
-class ActionCounterStore extends IntentStore<int, CounterAction> {
-  ActionCounterStore() : super(0);
+class IntentCounterStore extends IntentStore<int, CounterIntent> {
+  IntentCounterStore() : super(0);
 
   @override
-  void onIntent(CounterAction action) {
-    switch (action) {
-      case IncrementAction():
+  void onIntent(CounterIntent intent) {
+    switch (intent) {
+      case IncrementIntent():
         emit(state + 1);
+        break;
     }
   }
 }

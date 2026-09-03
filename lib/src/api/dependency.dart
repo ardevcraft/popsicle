@@ -1,23 +1,37 @@
-import '../engine/riverpod.dart';
+import 'package:meta/meta.dart';
+
+import '../engine/engine.dart';
 import 'core_types.dart';
 
-/// A non-state dependency managed by Popsicle's container graph.
+/// A non-state dependency managed by Popsicle's scoped graph.
 ///
-/// This is intentionally backed by Riverpod 2.6.1's proven Provider engine in
-/// the first Popsicle iteration. The public naming separates dependencies from
-/// reactive [Store] state.
-class Dependency<T> extends Provider<T> {
+/// Prefer `Popsicle.inject(...)` for declarations in application code.
+final class Dependency<T> implements PopsicleSource<T> {
   Dependency(
-    T Function(PopRef<T> ref) create, {
-    super.name,
-    super.dependencies,
-  }) : super(
-          (ref) => create(ref),
+    T Function(Scope scope) create, {
+    String? name,
+  }) : _delegate = Provider<T>(
+          (engine) => create(scopeFromEngine(engine)),
+          name: name,
         );
 
-  /// Creates a parameterized dependency while keeping Riverpod's family
-  /// identity/caching semantics internally.
+  final Provider<T> _delegate;
+
+  @override
+  @internal
+  Object get engine => _delegate;
+
+  /// Creates a parameterized non-state dependency.
   static const params = DependencyParamsBuilder();
+
+  /// Overrides this dependency in a Popsicle scope/container.
+  PopsicleOverride overrideWith(T Function(Scope scope) create) {
+    return PopsicleOverride.engine(
+      _delegate.overrideWith(
+        (engine) => create(scopeFromEngine(engine)),
+      ),
+    );
+  }
 }
 
 /// Builder used by [Dependency.params].
@@ -25,39 +39,46 @@ final class DependencyParamsBuilder {
   const DependencyParamsBuilder();
 
   DependencyParams<T, Arg> call<T, Arg>(
-    T Function(PopRef<T> ref, Arg arg) create, {
+    T Function(Scope scope, Arg arg) create, {
     String? name,
-    Iterable<PopsicleNode>? dependencies,
   }) {
     return DependencyParams<T, Arg>._(
       ProviderFamily<T, Arg>(
-        (ref, arg) => create(ref, arg),
+        (engine, arg) => create(scopeFromEngine(engine), arg),
         name: name,
-        dependencies: dependencies,
       ),
     );
   }
 }
 
 /// A callable parameterized dependency.
-///
-/// The `family` terminology remains an implementation detail in this release.
 final class DependencyParams<T, Arg> {
   const DependencyParams._(this._delegate);
 
   final ProviderFamily<T, Arg> _delegate;
 
-  DependencyHandle<T> call(Arg arg) => _delegate(arg);
-
-  /// Advanced graph node for declaring scoped dependency relationships.
-  PopsicleNode get node => _delegate;
+  DependencyHandle<T> call(Arg arg) {
+    return DependencyHandle<T>._(_delegate(arg));
+  }
 
   PopsicleOverride overrideWith(
-    T Function(PopRef<T> ref, Arg arg) create,
+    T Function(Scope scope, Arg arg) create,
   ) {
-    return _delegate.overrideWith((ref, arg) => create(ref, arg));
+    return PopsicleOverride.engine(
+      _delegate.overrideWith(
+        (engine, arg) => create(scopeFromEngine(engine), arg),
+      ),
+    );
   }
 }
 
-/// Public handle returned from a parameterized dependency.
-typedef DependencyHandle<T> = Provider<T>;
+/// Handle returned from a parameterized dependency.
+final class DependencyHandle<T> implements PopsicleSource<T> {
+  const DependencyHandle._(this._delegate);
+
+  final Provider<T> _delegate;
+
+  @override
+  @internal
+  Object get engine => _delegate;
+}
