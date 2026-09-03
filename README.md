@@ -1,124 +1,216 @@
-
-
 <p align="center">
-  <img src="https://github.com/arrahmanbd/popsicle/raw/master/images/icon.png" alt="App Icon" width="150"/>
+  <img src="https://raw.githubusercontent.com/ardevcraft/popsicle/master/images/icon.png" alt="Popsicle" width="150" />
 </p>
 
-# 🍡 Popsicle — Simple. Reactive. Composable
+# Popsicle
 
-> `Popsicle` is a lightweight, extensible state management and dependency injection (DI) framework for Flutter, built with simplicity and power in mind. Designed for developers who want full control without boilerplate, `Popsicle` unifies state, DI, and lifecycle management under one clean architecture.
+**Simple state. Explicit dependencies. Composable async work.**
 
+Popsicle is a compact state-management and dependency-injection package for Flutter. Its public API is intentionally centered around a small set of concepts instead of a large provider taxonomy.
 
-## Principles
+The core idea is simple:
 
-- **Dependency** is for dependency injection.
-- **Store** owns structured reactive application state.
-- **ReactiveValue** owns small standalone reactive values.
-- **StoreProvider** connects a Store to the graph.
-- **ActionStore** optionally adds an explicit `Action -> Store -> State` flow.
-- **`.params`** is the public parameterized API. Riverpod's `family` terminology
-  stays internal.
-- Async work does not require a different Store type.
-- **AsyncState** is a value type, so one Store can own multiple async sources.
-- **Async.combine2/3/4** derives a single required view from multiple async
-  sources.
-- DI/container behavior is intentionally not redesigned in this release.
+```text
+state -> UI
 
-## Install
+UI = f(state)
+```
 
-Use the package locally while the API is experimental:
+State stays persistent and renderable. One-shot work such as snackbars, navigation, dialogs, and external launches travels through a separate effect channel.
+
+## Why Popsicle
+
+- **Dependency** for dependency injection.
+- **ReactiveValue** for one small mutable reactive value.
+- **Store** for structured state and behavior.
+- **IntentStore** when a workflow benefits from explicit intents.
+- **StoreProvider** for Store identity and lifecycle in the graph.
+- **`.params`** for parameterized dependencies and Stores.
+- **AsyncState** for async resource state without requiring a special async Store type.
+- **Async.combine2/3/4** for composing multiple independent async sources.
+- **PopsicleConsumer** for Store state + one-shot UI effects.
+- No code generation required.
+
+## Mental model
+
+```text
+Dependency
+    -> application services / repositories / infrastructure
+
+ReactiveValue<T>
+    -> small standalone reactive state
+
+Store<State>
+    -> structured state + ordinary methods
+
+IntentStore<State, Intent>
+    -> structured state + explicit intent dispatch
+
+Store
+    |-- emit(state)   -> persistent state -> rebuild UI
+    `-- effect(value) -> one-shot effect  -> side effect
+```
+
+A practical rule:
+
+| Need | Use |
+| --- | --- |
+| API client, repository, storage, service | `Dependency<T>` |
+| Selected tab, toggle, tiny counter, simple filter | `ReactiveValue<T>` |
+| Feature state with behavior or async orchestration | `Store<State>` |
+| Explicit intent-driven workflow | `IntentStore<State, Intent>` |
+| Async loading/data/error state | `AsyncState<T>` |
+| Two or more async sources required together | `Async.combine2/3/4` |
+
+---
+
+## Installation
 
 ```bash
 flutter pub add popsicle
 ```
 
-Import one library:
+Import the package:
 
 ```dart
 import 'package:popsicle/popsicle.dart';
 ```
 
+Popsicle currently requires:
+
+```text
+Dart    >= 3.3.0 < 4.0.0
+Flutter >= 3.19.0
+```
+
+---
+
 ## App scope
+
+Wrap the application with `Popsicle`:
 
 ```dart
 void main() {
   runApp(
-    const PopsicleScope(
+    const Popsicle(
       child: MyApp(),
     ),
   );
 }
 ```
 
-`PopsicleScope` is backed by Riverpod 2.6.1's existing ProviderScope/container
-implementation in this iteration.
+`Popsicle` owns the Flutter-side graph used by dependencies, reactive values, and Stores.
 
-## Dependency injection
+It also supports overrides and observers:
 
 ```dart
-final apiClient = Dependency<ApiClient>(
-  (_) => ApiClient(),
+Popsicle(
+  overrides: [
+    // dependency/store overrides
+  ],
+  observers: [
+    // PopsicleObserver instances
+  ],
+  child: const MyApp(),
 );
+```
+
+---
+
+# Dependency injection
+
+Use `Dependency<T>` for non-state application dependencies.
+
+```dart
+class ApiClient {
+  const ApiClient(this.baseUrl);
+
+  final String baseUrl;
+}
+
+final apiClient = Dependency<ApiClient>(
+  (_) => const ApiClient('https://api.example.com'),
+);
+```
+
+Dependencies can depend on other dependencies:
+
+```dart
+class UserRepository {
+  const UserRepository(this.client);
+
+  final ApiClient client;
+}
 
 final userRepository = Dependency<UserRepository>(
-  (ref) => UserRepositoryImpl(
+  (ref) => UserRepository(
     ref.read(apiClient),
   ),
 );
 ```
 
-The important distinction is conceptual: dependencies are not Stores.
+The important distinction is architectural:
+
+```text
+Dependency -> object/service graph
+Store      -> reactive application state
+```
 
 ## Parameterized dependencies
 
+Use `.params` when creation depends on a runtime argument:
+
 ```dart
 final tenantClient = Dependency.params<ApiClient, String>(
-  (ref, tenantId) => ApiClient.forTenant(tenantId),
+  (_, tenantId) => ApiClient(
+    'https://$tenantId.api.example.com',
+  ),
 );
 ```
 
-Usage:
+Usage inside a Popsicle widget/factory:
 
 ```dart
-final client = ref.read(tenantClient('tenant-a'));
-```
-
-`.params` keeps the existing Riverpod 2.6 family identity/argument semantics
-under the hood without exposing `family` as Popsicle vocabulary.
-
-## Store
-
-```dart
-class CounterStore extends Store<int> {
-  CounterStore() : super(0);
-
-  void increment() => emit(state + 1);
-  void decrement() => emit(state - 1);
-}
-
-final counter = StoreProvider<CounterStore, int>(
-  (_) => CounterStore(),
+final client = ref.read(
+  tenantClient('tenant-a'),
 );
 ```
 
-UI:
+Each argument participates in the underlying graph identity and caching semantics.
+
+---
+
+# ReactiveValue
+
+Use `ReactiveValue<T>` when a full Store would add unnecessary ceremony.
 
 ```dart
-class CounterPage extends PopsicleWidget {
-  const CounterPage({super.key});
+final selectedTab = ReactiveValue(0);
+```
+
+Observe it from a `PopsicleWidget`:
+
+```dart
+class NavigationView extends PopsicleWidget {
+  const NavigationView({super.key});
 
   @override
-  Widget build(BuildContext context, PopsicleWidgetRef ref) {
-    final count = ref.watch(counter);
-    final actions = ref.store(counter);
+  Widget build(BuildContext context, PopsicleRef ref) {
+    final tab = ref.watch(selectedTab);
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text('$count'),
-        FilledButton(
-          onPressed: actions.increment,
-          child: const Text('Increment'),
+    return NavigationBar(
+      selectedIndex: tab,
+      onDestinationSelected: (index) {
+        ref.set(selectedTab, index);
+      },
+      destinations: const [
+        NavigationDestination(
+          icon: Icon(Icons.home_outlined),
+          label: 'Home',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.person_outline),
+          label: 'Profile',
         ),
       ],
     );
@@ -126,79 +218,157 @@ class CounterPage extends PopsicleWidget {
 }
 ```
 
-The UI rule is simple:
+Update from the current value:
+
+```dart
+ref.update(
+  selectedTab,
+  (current) => current + 1,
+);
+```
+
+Available mutation helpers:
+
+```dart
+ref.set(value, next);
+ref.update(value, (current) => next);
+```
+
+`ReactiveValue` is container-scoped. The same declaration can therefore hold independent values in separate `PopsicleContainer` instances.
+
+Use it for genuinely small state. When state grows behavior, related fields, async work, or effects, move it into a `Store`.
+
+---
+
+# Store
+
+A `Store<State>` owns structured reactive state and exposes normal Dart methods for behavior.
+
+```dart
+class CounterStore extends Store<int> {
+  CounterStore() : super(0);
+
+  void increment() {
+    emit(state + 1);
+  }
+
+  void decrement() {
+    emit(state - 1);
+  }
+
+  void reset() {
+    emit(0);
+  }
+}
+```
+
+Declare it with `StoreProvider`:
+
+```dart
+final counter = StoreProvider<CounterStore, int>(
+  (_) => CounterStore(),
+);
+```
+
+A Store provider exposes two useful views of the same feature:
 
 ```text
-ref.watch(storeProvider)   -> reactive State
-ref.store(storeProvider)   -> Store instance/actions, no rebuild
+ref.watch(counter) -> current reactive state
+ref.store(counter) -> Store instance, no state subscription
 ```
 
-## ReactiveValue
-
-Use `ReactiveValue<T>` when you need one small mutable reactive value and a
-full Store would add unnecessary ceremony.
+Example:
 
 ```dart
-final counter = ReactiveValue(0);
+class CounterPage extends PopsicleWidget {
+  const CounterPage({super.key});
+
+  @override
+  Widget build(BuildContext context, PopsicleRef ref) {
+    final count = ref.watch(counter);
+    final store = ref.store(counter);
+
+    return Scaffold(
+      body: Center(
+        child: Text('$count'),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: store.increment,
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+}
 ```
 
-Watch it like other Popsicle state:
+Async methods use the same Store type. Popsicle does not require a separate async Store hierarchy.
+
+---
+
+# IntentStore
+
+Simple state should continue using normal Store methods.
+
+For workflows where explicit inputs make the state machine easier to reason about, use `IntentStore<State, Intent>`.
 
 ```dart
-final count = ref.watch(counter);
-```
-
-Update it without exposing a notifier/controller:
-
-```dart
-ref.set(counter, 10);
-ref.update(counter, (value) => value + 1);
-```
-
-`ReactiveValue` is container-scoped. The same declaration can therefore hold
-independent values in separate `PopsicleContainer`/`PopsicleScope` instances.
-Use it for values such as a selected tab, a local filter, a toggle, or a small
-counter. Use `Store` when state has behavior, async orchestration, effects, or
-multiple related fields.
-
-
-## Optional ActionStore
-
-Simple Stores should use ordinary methods. For workflows that benefit from a
-BLoC-like explicit input model, use `ActionStore` without changing provider
-types:
-
-```dart
-sealed class CounterAction {
-  const CounterAction();
+sealed class CounterIntent {
+  const CounterIntent();
 }
 
-final class Increment extends CounterAction {
+final class Increment extends CounterIntent {
   const Increment();
 }
 
-class CounterStore extends ActionStore<int, CounterAction> {
-  CounterStore() : super(0);
+final class Reset extends CounterIntent {
+  const Reset();
+}
+
+class CounterController extends IntentStore<int, CounterIntent> {
+  CounterController() : super(0);
 
   @override
-  void onAction(CounterAction action) {
-    switch (action) {
+  void onIntent(CounterIntent intent) {
+    switch (intent) {
       case Increment():
         emit(state + 1);
+
+      case Reset():
+        emit(0);
     }
   }
 }
 ```
 
-Usage:
+Declare it exactly like any other Store:
 
 ```dart
-ref.store(counter).dispatch(const Increment());
+final intentCounter = StoreProvider<CounterController, int>(
+  (_) => CounterController(),
+);
 ```
 
-Actions are optional; Popsicle does not force event classes onto simple state.
+Dispatch an intent:
 
-## StoreProvider.params
+```dart
+ref.store(intentCounter).dispatch(
+  const Increment(),
+);
+```
+
+The flow is:
+
+```text
+Intent -> IntentStore -> State -> UI
+```
+
+`IntentStore` is optional. Do not introduce intent classes when ordinary methods are clearer.
+
+---
+
+# Parameterized Stores
+
+Use `StoreProvider.params` when a Store instance depends on a runtime argument.
 
 ```dart
 class StudentStore extends Store<StudentState> {
@@ -210,8 +380,14 @@ class StudentStore extends Store<StudentState> {
   final String studentId;
   final StudentRepository repository;
 }
+```
 
-final student = StoreProvider.params<StudentStore, StudentState, String>(
+```dart
+final student = StoreProvider.params<
+  StudentStore,
+  StudentState,
+  String
+>(
   (ref, studentId) => StudentStore(
     studentId: studentId,
     repository: ref.read(studentRepository),
@@ -219,16 +395,29 @@ final student = StoreProvider.params<StudentStore, StudentState, String>(
 );
 ```
 
-Usage:
+Resolve a concrete Store handle with the argument:
 
 ```dart
-final state = ref.watch(student(studentId));
-final actions = ref.store(student(studentId));
+final provider = student(studentId);
+
+final state = ref.watch(provider);
+final store = ref.store(provider);
 ```
 
-No `family` API is exposed.
+Different parameters produce independent graph identities:
 
-## Selective rebuilds
+```dart
+final student42 = student('42');
+final student77 = student('77');
+```
+
+The public API deliberately uses `.params`; users do not need to learn a separate `family` vocabulary.
+
+---
+
+# Selective rebuilds
+
+Use `selectStore` when a widget depends on only one projection of Store state.
 
 ```dart
 final isLoading = ref.selectStore(
@@ -237,11 +426,104 @@ final isLoading = ref.selectStore(
 );
 ```
 
-This is backed by Riverpod 2.6's selector machinery.
+The widget rebuilds when the selected value changes rather than for every Store state update.
 
-## Multiple async sources in one Store
+---
 
-A Store can keep async resources independent:
+# AsyncState
+
+`AsyncState<T>` is a normal immutable value for async operation/resource state.
+
+A Store can therefore own multiple independent async sources without wrapping the whole feature in one async provider.
+
+Available states:
+
+```dart
+const AsyncState<T>.idle();
+AsyncState<T>.loading();
+const AsyncState<T>.data(value);
+AsyncState<T>.error(error, stackTrace);
+```
+
+Common properties:
+
+```dart
+state.hasValue;
+state.hasError;
+state.isIdle;
+state.isLoading;
+state.isInitialLoading;
+state.isRefreshing;
+state.valueOrNull;
+state.requireValue;
+state.error;
+state.stackTrace;
+```
+
+Transform a value while keeping async metadata:
+
+```dart
+final names = users.map(
+  (items) => items.map((user) => user.name).toList(),
+);
+```
+
+Render all states with `when`:
+
+```dart
+return profile.when(
+  idle: () => const SizedBox.shrink(),
+  loading: () => const CircularProgressIndicator(),
+  data: (profile, refreshing) {
+    return ProfileView(
+      profile: profile,
+      refreshing: refreshing,
+    );
+  },
+  error: (error, stackTrace, previousValue) {
+    return ErrorView(
+      error: error,
+      previousProfile: previousValue,
+    );
+  },
+);
+```
+
+## Preserve stale data while refreshing
+
+```dart
+emit(
+  state.copyWith(
+    profile: AsyncState.loading(
+      previous: state.profile,
+    ),
+  ),
+);
+```
+
+After a failed refresh, previous data can also be preserved:
+
+```dart
+emit(
+  state.copyWith(
+    profile: AsyncState.error(
+      error,
+      stackTrace,
+      previous: state.profile,
+    ),
+  ),
+);
+```
+
+This allows the UI to keep useful content visible while reporting refresh/loading metadata separately.
+
+---
+
+# Combining async sources
+
+A feature often owns multiple API sources that load independently but are sometimes required together.
+
+Keep the sources independent in state:
 
 ```dart
 class DashboardState {
@@ -253,132 +535,291 @@ class DashboardState {
   final AsyncState<Profile> profile;
   final AsyncState<Metrics> metrics;
 
-  AsyncState<(Profile, Metrics)> get content =>
-      Async.combine2(profile, metrics);
+  AsyncState<(Profile, Metrics)> get content {
+    return Async.combine2(
+      profile,
+      metrics,
+    );
+  }
 }
 ```
 
-This gives both behaviors:
+The original sources remain independently renderable:
 
 ```text
-profile -> independent UI section
-metrics -> independent UI section
-
-profile + metrics -> content when both are required together
+profile -> profile section
+metrics -> metrics section
 ```
 
-### Async composition
+while the derived state handles UI that requires both:
+
+```text
+profile + metrics -> combined content
+```
+
+Available composition helpers:
 
 ```dart
-final pair = Async.combine2(profile, metrics);
-final triple = Async.combine3(profile, metrics, permissions);
+final pair = Async.combine2(a, b);
+final triple = Async.combine3(a, b, c);
 final four = Async.combine4(a, b, c, d);
 ```
 
-Or for two values:
+For two states, `zip` is equivalent:
 
 ```dart
 final pair = profile.zip(metrics);
 ```
 
-Composition semantics:
+Composition preserves stale values and refresh metadata when all required values are still available.
 
-- all sources have values -> combined value
-- any source refreshing while all values exist -> combined stale value + refreshing
-- refresh error with all stale values available -> combined stale value + error
-- missing required value + error -> combined error
-- missing required value + loading -> combined loading
-- all idle -> combined idle
+---
 
-This avoids creating a second Store/provider merely to coordinate two API
-responses.
+# Store effects
 
-## AsyncState refresh flow
+Persistent state and one-shot UI effects are separate concepts.
+
+Use `emit(...)` for state:
 
 ```dart
-emit(state.copyWith(
-  profile: AsyncState.loading(previous: state.profile),
-));
-
-try {
-  final profile = await repository.getProfile();
-  emit(state.copyWith(
-    profile: AsyncState.data(profile),
-  ));
-} catch (error, stackTrace) {
-  emit(state.copyWith(
-    profile: AsyncState.error(
-      error,
-      stackTrace,
-      previous: state.profile,
-    ),
-  ));
-}
+emit(nextState);
 ```
 
-`AsyncState.loading(previous: ...)` preserves existing data and reports
-`isRefreshing == true`.
-
-## Store effects with PopsicleConsumer
-
-`PopsicleConsumer` keeps persistent Store state and one-shot UI effects on
-separate channels. The public API is intentionally only `provider`, `effect`,
-and `build`.
+Use `effect(...)` for transient events:
 
 ```dart
-sealed class CounterEffect {
-  const CounterEffect();
+effect(
+  const SaveSucceeded(),
+);
+```
+
+Effects are:
+
+- delivered only to active listeners;
+- not stored as State;
+- not replayed after rebuild;
+- not used to rebuild UI.
+
+Example:
+
+```dart
+sealed class ProfileEffect {
+  const ProfileEffect();
 }
 
-final class CounterReachedLimit extends CounterEffect {
-  const CounterReachedLimit(this.count);
+final class ProfileRefreshFailed extends ProfileEffect {
+  const ProfileRefreshFailed(this.message);
 
-  final int count;
+  final String message;
 }
 
-class CounterStore extends Store<int> {
-  CounterStore() : super(0);
+class ProfileStore extends Store<ProfileState> {
+  ProfileStore(this.repository) : super(const ProfileState());
 
-  void increment() {
-    final next = state + 1;
-    emit(next);
+  final ProfileRepository repository;
 
-    if (next == 5) {
-      effect(CounterReachedLimit(next));
+  Future<void> refresh() async {
+    try {
+      // load + emit persistent state
+    } catch (_) {
+      effect(
+        const ProfileRefreshFailed('Unable to refresh profile.'),
+      );
     }
   }
 }
+```
 
-PopsicleConsumer<CounterStore, int>(
-  provider: counter,
+## PopsicleConsumer
+
+`PopsicleConsumer` is the Store-focused UI boundary for persistent state plus optional one-shot effects.
+
+Its intended public model is deliberately small:
+
+```text
+provider
+build
+effect
+```
+
+```dart
+PopsicleConsumer<ProfileStore, ProfileState>(
+  provider: profileStore,
   effect: (context, effect) {
-    if (effect is CounterReachedLimit) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Reached ${effect.count}')),
-      );
+    switch (effect) {
+      case ProfileRefreshFailed(:final message):
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message)),
+        );
     }
   },
-  build: (context, count, store) {
-    return FilledButton(
-      onPressed: store.increment,
-      child: Text('$count'),
+  build: (context, state, store) {
+    return RefreshIndicator(
+      onRefresh: store.refresh,
+      child: ProfileBody(state: state),
     );
   },
 );
 ```
 
-`emit(state)` updates persistent state and rebuilds consumers. `effect(value)`
-publishes a transient value only to listeners active at that moment. Effects
-are not cached, reconstructed from state changes, or replayed on rebuild.
+Use `PopsicleConsumer` when a Store needs both rendering and one-shot UI reactions. For simple state rendering, `PopsicleWidget` + `ref.watch(...)` is sufficient.
 
-This avoids using `ref.listen` for ordinary UI side effects. Low-level
-`ref.listenStore(...)` remains available for state-listening/orchestration, but
-it is not the effect channel.
+For low-level non-widget scenarios, a Store also exposes:
 
-For a generic small reactive boundary that is not Store-specific, use
-`PopsicleBuilder`.
+```dart
+final subscription = store.listenEffects(
+  (effect) {
+    // handle effect
+  },
+);
+```
 
-## Public API in 0.1.4
+---
+
+# PopsicleBuilder
+
+`PopsicleBuilder` creates a small reactive boundary without defining a full `PopsicleWidget` class.
+
+```dart
+PopsicleBuilder(
+  builder: (context, ref, child) {
+    final value = ref.watch(someDependency);
+
+    return Text('$value');
+  },
+);
+```
+
+Use it for dependency-only or mixed low-level reads where `PopsicleConsumer` would be unnecessary.
+
+---
+
+# Stateful widgets
+
+For stateful Flutter widgets, use `PopsicleStatefulWidget` and `PopsicleState`:
+
+```dart
+class EditorPage extends PopsicleStatefulWidget {
+  const EditorPage({super.key});
+
+  @override
+  PopsicleState<EditorPage> createState() => _EditorPageState();
+}
+
+class _EditorPageState extends PopsicleState<EditorPage> {
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(editorStore);
+
+    return EditorView(state: state);
+  }
+}
+```
+
+---
+
+# Dart-only container
+
+`PopsicleContainer` can resolve and mutate Popsicle state without Flutter widgets.
+
+```dart
+final container = PopsicleContainer();
+
+try {
+  final repository = container.read(userRepository);
+  final state = container.read(counter);
+  final store = container.read(counter.store);
+
+  store.increment();
+
+  container.set(selectedTab, 2);
+  container.update(selectedTab, (value) => value + 1);
+} finally {
+  container.dispose();
+}
+```
+
+This is useful for unit tests, command-line programs, and non-widget orchestration.
+
+---
+
+# Overrides and testing
+
+`Popsicle` and `PopsicleContainer` expose the existing override mechanism through `PopsicleOverride`.
+
+Parameterized dependencies and Stores expose `overrideWith(...)` directly:
+
+```dart
+final users = Dependency.params<UserRepository, String>(
+  (ref, tenantId) => RealUserRepository(tenantId),
+);
+```
+
+```dart
+final override = users.overrideWith(
+  (ref, tenantId) => FakeUserRepository(tenantId),
+);
+```
+
+Then:
+
+```dart
+final container = PopsicleContainer(
+  overrides: [override],
+);
+```
+
+Stores remain directly constructible, so unit tests can also bypass the graph entirely:
+
+```dart
+final store = ProfileStore(
+  FakeProfileRepository(),
+);
+```
+
+---
+
+# Feature-first architecture
+
+Popsicle does not require a project structure, but its primitives fit naturally into Feature-First Clean Architecture.
+
+```text
+features/
+└── user_profile/
+    ├── domain/
+    │   ├── entities/
+    │   ├── repositories/
+    │   └── usecases/
+    │
+    ├── data/
+    │   ├── datasources/
+    │   ├── models/
+    │   └── repositories/
+    │
+    └── presentation/
+        ├── state/
+        ├── stores/
+        ├── pages/
+        └── widgets/
+```
+
+Typical dependency direction:
+
+```text
+UI
+ -> Store
+ -> Use Case / Repository contract
+ -> Repository implementation
+ -> Remote / Local source
+```
+
+Popsicle should remain in presentation/composition code; domain entities and repository contracts can stay plain Dart.
+
+---
+
+# Public API — 2.0.0
+
+Most applications primarily need:
 
 ```text
 Dependency<T>
@@ -387,49 +828,82 @@ Dependency.params<T, Arg>
 ReactiveValue<T>
 
 Store<State>
-ActionStore<State, Action>
+IntentStore<State, Intent>
 StoreProvider<Store, State>
 StoreProvider.params<Store, State, Arg>
 
 AsyncState<T>
-Async.combine2
-Async.combine3
-Async.combine4
-AsyncState.zip
+Async.combine2(...)
+Async.combine3(...)
+Async.combine4(...)
+AsyncState.zip(...)
 
-PopsicleScope
-PopsicleContainer
+Popsicle
 PopsicleWidget
 PopsicleStatefulWidget
 PopsicleState
-PopsicleConsumer
 PopsicleBuilder
-
-PopsicleRef
-PopsicleWidgetRef
-PopsicleOverride
-PopsicleObserver
+PopsicleConsumer
+PopsicleContainer
 ```
 
-## Intentionally deferred
+The package barrel currently also exports these supporting/advanced types:
 
-The first iteration does **not** introduce a new DI engine, type-based service
-locator, bindings/modules, feature scopes, code generation, a separate
-AsyncStore hierarchy, or a public EventBus.
+```text
+PopRef<T>
+PopsicleRef
+PopsicleNode
+PopsicleOverride
+PopsicleObserver
+PopsicleSubscription<T>
 
-The underlying fork still contains more Riverpod 2.6 engine code than the
-public API needs. That is intentional. We should remove internals only after the
-new API has tests and real integration feedback.
+DependencyHandle<T>
+DependencyParams<T, Arg>
+DependencyParamsBuilder
 
+StoreHandle<Store, State>
+StoreAccessor<Store>
+StoreParams<Store, State, Arg>
+StoreParamsBuilder
 
-## Example app
+PopsicleBuilderCallback
+PopsicleStoreBuild<Store, State>
+PopsicleStoreEffect
 
-The `example/` project includes focused examples for:
+PopsicleStoreRefExtension
+PopsicleWidgetRefStoreExtension
+PopsicleRefReactiveValueExtension
+PopsicleWidgetRefReactiveValueExtension
+PopsicleContainerReactiveValueExtension
+```
 
-- plain `Dependency` resolution with `PopsicleBuilder`
-- small mutable state with `ReactiveValue`
-- `PopsicleConsumer` dedicated one-shot effect channel
-- async loading/refresh using `AsyncState`
-- two independent async sources combined with `Async.combine2`
-- optional `ActionStore` dispatch
-- `StoreProvider.params` with multiple independent Store instances
+---
+
+# Current implementation status
+
+Popsicle 2.0.0 currently retains the proven Riverpod 2.6.1 container/provider engine internally while presenting a smaller Popsicle API publicly.
+
+The vendored engine is an implementation detail and is not exported from `package:popsicle/popsicle.dart`.
+
+This allows Popsicle to evolve its public model incrementally without rewriting graph resolution, lifecycle, subscriptions, selectors, overrides, and scheduling all at once.
+
+---
+
+# Design principles
+
+Popsicle aims to keep these rules stable:
+
+1. **Plain values stay plain Dart.** Do not make something reactive unless it needs to be reactive.
+2. **Dependencies are not state.** Use `Dependency` for services and `Store`/`ReactiveValue` for state.
+3. **UI is a function of state.** Persistent state should be sufficient to render the current UI.
+4. **Effects are not state.** Snackbar/navigation/dialog events belong to the one-shot effect channel.
+5. **Async is state, not a provider type.** Use `AsyncState` inside normal Stores.
+6. **Derived async composition should remain derived.** Keep independent sources independent and combine them only where required.
+7. **Intent-driven workflows are optional.** Prefer ordinary methods until explicit intents make the workflow clearer.
+8. **Do not expose internal engine complexity unless the public API genuinely needs it.**
+
+---
+
+# License
+
+Popsicle is distributed under the license included in this repository. See [LICENSE](LICENSE) and [NOTICE](NOTICE) for details.

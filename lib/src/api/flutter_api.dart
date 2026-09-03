@@ -13,8 +13,8 @@ import 'store.dart';
 typedef PopsicleRef = WidgetRef;
 
 /// Root/scoped Flutter bridge for Popsicle's existing container engine.
-class PopsicleScope extends StatelessWidget {
-  const PopsicleScope({
+class Popsicle extends StatelessWidget {
+  const Popsicle({
     super.key,
     this.overrides = const [],
     this.observers,
@@ -277,6 +277,7 @@ extension StoreProviderView<StoreType extends Store<State>, State>
     );
   }
 }
+
 /// OR,
 ///
 // provider.view(

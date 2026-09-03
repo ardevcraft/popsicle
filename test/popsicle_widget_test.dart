@@ -17,7 +17,7 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(
-      const PopsicleScope(
+      const Popsicle(
         child: MaterialApp(
           home: _CounterPage(),
         ),
@@ -35,7 +35,7 @@ void main() {
   testWidgets('ReactiveValue rebuilds and updates without a Store',
       (tester) async {
     await tester.pumpWidget(
-      const PopsicleScope(
+      const Popsicle(
         child: MaterialApp(
           home: _ReactiveValuePage(),
         ),
@@ -55,7 +55,7 @@ void main() {
 
   testWidgets('PopsicleConsumer builds Store state', (tester) async {
     await tester.pumpWidget(
-      const PopsicleScope(
+      const Popsicle(
         child: MaterialApp(
           home: _EffectConsumerHarness(),
         ),
@@ -76,7 +76,7 @@ void main() {
     final effects = <int>[];
 
     await tester.pumpWidget(
-      PopsicleScope(
+      Popsicle(
         child: MaterialApp(
           home: _EffectConsumerHarness(
             onEffect: effects.add,
@@ -111,7 +111,7 @@ void main() {
     var builds = 0;
 
     await tester.pumpWidget(
-      PopsicleScope(
+      Popsicle(
         child: MaterialApp(
           home: _EffectConsumerHarness(
             onEffect: effects.add,
@@ -133,7 +133,7 @@ void main() {
 
   testWidgets('PopsicleConsumer effect callback is optional', (tester) async {
     await tester.pumpWidget(
-      const PopsicleScope(
+      const Popsicle(
         child: MaterialApp(
           home: _EffectConsumerHarness(),
         ),
@@ -152,7 +152,7 @@ void main() {
     final message = Dependency<String>((_) => 'hello');
 
     await tester.pumpWidget(
-      PopsicleScope(
+      Popsicle(
         child: MaterialApp(
           home: PopsicleBuilder(
             builder: (context, ref, child) {

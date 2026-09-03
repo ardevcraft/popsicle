@@ -20,7 +20,7 @@ export 'src/api/flutter_api.dart'
         PopsicleBuilder,
         PopsicleBuilderCallback,
         PopsicleConsumer,
-        PopsicleScope,
+        Popsicle,
         PopsicleState,
         PopsicleStatefulWidget,
         PopsicleStoreBuild,

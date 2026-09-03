@@ -11,7 +11,7 @@ import 'examples/reactive_value_example.dart';
 
 void main() {
   runApp(
-    const PopsicleScope(
+    const Popsicle(
       child: PopsicleExampleApp(),
     ),
   );
