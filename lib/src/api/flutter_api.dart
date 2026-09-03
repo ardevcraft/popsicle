@@ -55,6 +55,7 @@ class Popsicle extends StatelessWidget {
 
   /// Declares parameterized Store state.
   static StoreParams<StoreT, State, Arg>
+      // ignore: avoid_types_as_parameter_names
       params<StoreT extends Store<State>, State, Arg>(
     StoreT Function(Scope scope, Arg arg) create, {
     String? name,

@@ -4,7 +4,6 @@ import 'package:meta/meta.dart';
 import '../engine/engine.dart';
 import '../flutter_engine/consumer.dart';
 import 'core_types.dart';
-import 'store.dart';
 
 /// A lightweight scoped reactive value.
 ///

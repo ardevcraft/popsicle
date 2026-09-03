@@ -131,7 +131,8 @@ class CombinedAsyncExample extends StatelessWidget {
                   const SizedBox(height: 24),
                   FilledButton(
                     onPressed: content.isLoading ? null : store.load,
-                    child: Text(content.hasValue ? 'Refresh both' : 'Load both'),
+                    child:
+                        Text(content.hasValue ? 'Refresh both' : 'Load both'),
                   ),
                 ],
               ),
