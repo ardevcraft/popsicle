@@ -704,6 +704,14 @@ The package still exposes advanced declaration/handle types such as `Dependency`
 9. **Framework vocabulary should describe intent, not implementation mechanics.**
 
 ---
+## Author
+
+Maintained by **AR Rahman**
+GitHub: [@ardevcraft](https://github.com/ardevcraft)
+
+Crafted with ❤️ for open-source community. 🇧🇩
+
+[![Stand With Palestine](https://github.com/ardevcraft/bangla_pdf_fixer/raw/master/images/stand_with_plastine.svg)](https://pub.dev/packages/popsicle)
 
 ## License
 
