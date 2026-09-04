@@ -1,0 +1,15 @@
+{
+  "name": "Popsicle Documentation",
+  "short_name": "Popsicle Docs",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#fbfbfd",
+  "theme_color": "#ff4f64",
+  "icons": [
+    {
+      "src": "assets/icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

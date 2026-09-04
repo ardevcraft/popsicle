@@ -1,0 +1,48 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Streams · Popsicle</title><meta name="description" content="Own external stream subscriptions inside a Store with listenTo.">
+<meta name="theme-color" content="#ff4f64"><link rel="icon" type="image/png" href="assets/icon.png"><link rel="manifest" href="site.webmanifest"><link rel="canonical" href="https://ardevcraft.github.io/popsicle/streams.html">
+<meta property="og:title" content="Streams · Popsicle"><meta property="og:description" content="Own external stream subscriptions inside a Store with listenTo."><meta property="og:type" content="article"><meta property="og:url" content="https://ardevcraft.github.io/popsicle/streams.html"><meta property="og:image" content="https://ardevcraft.github.io/popsicle/assets/philosophy.png">
+<link rel="stylesheet" href="assets/styles.css"></head><body>
+<header class="header">
+      <button class="icon-btn menu-btn" type="button" aria-label="Open navigation" data-menu>☰</button>
+      <a class="brand" href="index.html"><img src="assets/icon.png" alt=""><span>Popsicle</span><small>v2.1.0</small></a>
+      <div class="header-actions">
+        <button class="search-btn" type="button" data-search aria-label="Search docs">⌕ <span>Search docs</span><kbd>⌘ K</kbd></button>
+        <button class="icon-btn" type="button" data-theme-toggle aria-label="Toggle theme">◐</button>
+        <a class="repo-btn" href="https://github.com/ardevcraft/popsicle" target="_blank" rel="noreferrer">GitHub ↗</a>
+      </div>
+    </header><div class="layout"><aside class="sidebar" aria-label="Documentation navigation"><div class="nav-group"><div class="nav-title">Start</div><a class="nav-link" href="index.html">Overview</a><a class="nav-link" href="getting-started.html">Getting Started</a><a class="nav-link" href="core-concepts.html">Core Concepts</a></div><div class="nav-group"><div class="nav-title">Fundamentals</div><a class="nav-link" href="dependency-injection.html">Dependency Injection</a><a class="nav-link" href="reactive-values.html">Reactive Values</a><a class="nav-link" href="stores-effects.html">Stores &amp; Effects</a><a class="nav-link" href="flutter-ui.html">Flutter UI</a><a class="nav-link" href="intent-store.html">IntentStore</a></div><div class="nav-group"><div class="nav-title">Capabilities</div><a class="nav-link" href="history.html">History</a><a class="nav-link active" href="streams.html">Streams</a><a class="nav-link" href="async-state.html">Async State</a><a class="nav-link" href="parameterized-state.html">Parameterized State</a></div><div class="nav-group"><div class="nav-title">Reference</div><a class="nav-link" href="api.html">API Outline</a><a class="nav-link" href="testing.html">Testing</a><a class="nav-link" href="migration.html">Migration to 2.1</a><a class="nav-link" href="changelog.html">Changelog</a><a class="nav-link" href="publishing.html">Publishing</a></div><div class="sidebar-foot">Popsicle 2.1.0<br>Flutter state management.<br><a href="https://github.com/ardevcraft/popsicle/issues" target="_blank">Report an issue ↗</a></div></aside><main class="main"><article class="doc-wrap"><header class="doc-header"><span class="eyebrow">Popsicle docs · 2.1.0</span><h1>Streams</h1><p>Own external stream subscriptions inside a Store with listenTo.</p></header><div class="doc-content"><h1 id="streams">Streams</h1>
+<p>A normal Store can own external stream subscriptions with <code>listenTo(...)</code>.</p>
+<pre><code class="language-dart">class LiveMessagesStore extends Store&lt;List&lt;Message&gt;&gt; {
+  LiveMessagesStore(Stream&lt;List&lt;Message&gt;&gt; messages) : super(const []) {
+    listenTo(
+      messages,
+      onData: commit,
+      onError: (error, stackTrace) {
+        effect(StreamFailed(error));
+      },
+    );
+  }
+}
+</code></pre>
+<p>Popsicle does not require a separate Stream Store hierarchy:</p>
+<pre><code class="language-text">External Stream
+      ↓
+   listenTo
+      ↓
+    Store
+      ↓
+   commit
+      ↓
+     .ui()
+</code></pre>
+<p><code>listenTo(...)</code> supports:</p>
+<pre><code class="language-text">onData
+onError
+onDone
+cancelOnError
+</code></pre>
+<p>It returns the underlying <code>StreamSubscription&lt;T&gt;</code> so a Store can pause, resume, or cancel early when needed.</p>
+<p>Subscriptions registered through <code>listenTo(...)</code> are cancelled automatically when the Store is disposed. Their lifetime therefore follows the Store, not an individual widget build.</p>
+</div><nav class="page-nav"><a href="history.html"><small>Previous</small><strong>History</strong></a><a href="async-state.html"><small>Next</small><strong>Async State</strong></a></nav></article></main></div><div class="search-overlay" role="dialog" aria-modal="true" aria-label="Search documentation"><div class="search-panel"><div class="search-input-wrap"><input class="search-input" type="search" placeholder="Search Store, History, streams, Scope…" autocomplete="off"></div><div class="search-results"><div class="search-empty">Type to search the Popsicle docs.</div></div></div></div><script src="assets/app.js"></script></body></html>

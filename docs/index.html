@@ -1,0 +1,63 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Popsicle · Compact Flutter state management</title>
+<meta name="description" content="Compact Flutter state management with scoped DI, reactive values, Stores, effects, undo/redo history, streams, and composable async state.">
+<meta name="theme-color" content="#ff4f64"><link rel="icon" type="image/png" href="assets/icon.png"><link rel="manifest" href="site.webmanifest"><link rel="canonical" href="https://ardevcraft.github.io/popsicle/">
+<meta property="og:title" content="Popsicle · Flutter state management"><meta property="og:description" content="Small API. Explicit state. UI = f(state)."><meta property="og:type" content="website"><meta property="og:url" content="https://ardevcraft.github.io/popsicle/"><meta property="og:image" content="https://ardevcraft.github.io/popsicle/assets/philosophy.png">
+<link rel="stylesheet" href="assets/styles.css"></head><body><header class="header">
+      <button class="icon-btn menu-btn" type="button" aria-label="Open navigation" data-menu>☰</button>
+      <a class="brand" href="index.html"><img src="assets/icon.png" alt=""><span>Popsicle</span><small>v2.1.0</small></a>
+      <div class="header-actions">
+        <button class="search-btn" type="button" data-search aria-label="Search docs">⌕ <span>Search docs</span><kbd>⌘ K</kbd></button>
+        <button class="icon-btn" type="button" data-theme-toggle aria-label="Toggle theme">◐</button>
+        <a class="repo-btn" href="https://github.com/ardevcraft/popsicle" target="_blank" rel="noreferrer">GitHub ↗</a>
+      </div>
+    </header>
+<main class="landing"><section class="hero"><div class="hero-inner"><div><span class="hero-badge">Popsicle 2.1.0 · Flutter</span><h1>Small API.<br><span>Explicit state.</span></h1><p class="hero-copy">A compact state-management and dependency-injection package built around one idea: <strong>UI = f(state)</strong>. No code generation. No provider taxonomy.</p><div class="hero-actions"><a class="primary" href="getting-started.html">Get started →</a><a class="secondary" href="https://github.com/ardevcraft/popsicle" target="_blank">View on GitHub ↗</a></div></div>
+<div class="hero-code"><div class="dots"><i></i><i></i><i></i></div><pre><code>final api = Popsicle.inject((_) =&gt; ApiClient());
+final theme = Popsicle.value(ThemeMode.system);
+
+final counter = Popsicle.create(
+  (_) =&gt; CounterStore(),
+);
+
+counter.ui(
+  (context, state, store) =&gt; Text('$state'),
+);</code></pre></div></div><img class="hero-logo" src="assets/icon.png" alt=""></section>
+<section class="section"><div class="section-inner"><div class="section-head"><span class="kicker">Four declarations</span><h2>A deliberately small surface.</h2><p>Popsicle keeps composition, tiny state, structured state, and parameterized state separate without making you learn a family of provider types.</p></div><div class="cards">
+<div class="card"><span class="pill">Popsicle.inject</span><h3>Dependencies</h3><p>Typed API clients, repositories, services, storage, configuration, and other scoped dependencies.</p></div>
+<div class="card"><span class="pill">Popsicle.value</span><h3>Reactive values</h3><p>Small standalone values that can render directly with <code>.ui()</code>.</p></div>
+<div class="card"><span class="pill">Popsicle.create</span><h3>Stores</h3><p>Structured feature state, behavior, async orchestration, effects, history, and streams.</p></div>
+<div class="card"><span class="pill">Popsicle.params</span><h3>Parameterized state</h3><p>Independent Store identity and state keyed by runtime arguments.</p></div>
+</div></div></section>
+<section class="section"><div class="section-inner"><div class="section-head"><span class="kicker">State mechanism</span><h2>Commit state. Emit effects once.</h2><p>Persistent state and one-shot UI work are different channels. That distinction stays intact across rebuilds, history, and stream input.</p></div><div class="feature-grid">
+<div class="feature"><span class="eyebrow">Store</span><h3>Explicit transitions with <code>commit()</code></h3><pre><code>class CounterStore extends Store&lt;int&gt; {
+  CounterStore() : super(0);
+
+  void increment() {
+    commit(state + 1);
+  }
+}</code></pre></div>
+<div class="feature"><span class="eyebrow">Effect</span><h3>One-shot UI work stays outside state</h3><pre><code>profile.ui(
+  (context, state, store) =&gt; ProfileBody(state),
+  effect: (context, effect) {
+    // snackbar, navigation, dialog…
+  },
+);</code></pre></div>
+</div></div></section>
+<section class="section"><div class="section-inner"><div class="feature-grid">
+<div class="feature"><span class="eyebrow">History</span><h3>Undo / redo is opt-in.</h3><p>Add <code>History&lt;State&gt;</code> only where a feature needs snapshots. Effects are never recorded or replayed.</p><pre><code>class EditorStore extends Store&lt;EditorState&gt;
+    with History&lt;EditorState&gt; {
+  EditorStore() : super(const EditorState());
+}</code></pre><p><a href="history.html">Read History docs →</a></p></div>
+<div class="feature"><span class="eyebrow">Streams</span><h3>Streams feed the same Store.</h3><p>No separate Stream Store hierarchy. <code>listenTo()</code> owns subscriptions and cancels them with the Store lifecycle.</p><pre><code>listenTo(
+  messages,
+  onData: commit,
+  onError: (error, stack) {
+    effect(StreamFailed(error));
+  },
+);</code></pre><p><a href="streams.html">Read Stream docs →</a></p></div>
+</div></div></section>
+<section class="section"><div class="section-inner philosophy"><div><img src="assets/philosophy.png" alt="UI equals a function of state"></div><div><span class="eyebrow">Philosophy</span><h2>UI = f(state)</h2><p>State is the durable snapshot. Methods, intents, and streams transition that snapshot. Effects represent occurrences that should happen once. The UI stays a projection of state rather than a second source of truth.</p><p><a class="secondary" href="core-concepts.html">Explore core concepts →</a></p></div></div></section>
+<section class="section final-cta"><div class="section-inner"><h2>Build with less state-management ceremony.</h2><p>Start with four declarations, Scope, Store, and <code>.ui()</code>.</p><div class="hero-actions" style="justify-content:center"><a class="primary" href="getting-started.html">Read the docs →</a><a class="secondary" href="api.html">API outline</a></div></div></section>
+<footer class="footer"><div class="footer-inner"><span>Popsicle 2.1.0 · MIT License</span><span><a href="https://github.com/ardevcraft/popsicle">GitHub</a> · <a href="https://github.com/ardevcraft/popsicle/issues">Issues</a> · <a href="https://pub.dev/packages/popsicle">pub.dev</a></span></div></footer></main><div class="search-overlay" role="dialog" aria-modal="true" aria-label="Search documentation"><div class="search-panel"><div class="search-input-wrap"><input class="search-input" type="search" placeholder="Search Store, History, streams, Scope…" autocomplete="off"></div><div class="search-results"><div class="search-empty">Type to search the Popsicle docs.</div></div></div></div><script src="assets/app.js"></script></body></html>

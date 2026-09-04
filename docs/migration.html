@@ -1,0 +1,80 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Migration to 2.1 · Popsicle</title><meta name="description" content="Migrate emit to commit, view to ui, and adopt History and streams.">
+<meta name="theme-color" content="#ff4f64"><link rel="icon" type="image/png" href="assets/icon.png"><link rel="manifest" href="site.webmanifest"><link rel="canonical" href="https://ardevcraft.github.io/popsicle/migration.html">
+<meta property="og:title" content="Migration to 2.1 · Popsicle"><meta property="og:description" content="Migrate emit to commit, view to ui, and adopt History and streams."><meta property="og:type" content="article"><meta property="og:url" content="https://ardevcraft.github.io/popsicle/migration.html"><meta property="og:image" content="https://ardevcraft.github.io/popsicle/assets/philosophy.png">
+<link rel="stylesheet" href="assets/styles.css"></head><body>
+<header class="header">
+      <button class="icon-btn menu-btn" type="button" aria-label="Open navigation" data-menu>☰</button>
+      <a class="brand" href="index.html"><img src="assets/icon.png" alt=""><span>Popsicle</span><small>v2.1.0</small></a>
+      <div class="header-actions">
+        <button class="search-btn" type="button" data-search aria-label="Search docs">⌕ <span>Search docs</span><kbd>⌘ K</kbd></button>
+        <button class="icon-btn" type="button" data-theme-toggle aria-label="Toggle theme">◐</button>
+        <a class="repo-btn" href="https://github.com/ardevcraft/popsicle" target="_blank" rel="noreferrer">GitHub ↗</a>
+      </div>
+    </header><div class="layout"><aside class="sidebar" aria-label="Documentation navigation"><div class="nav-group"><div class="nav-title">Start</div><a class="nav-link" href="index.html">Overview</a><a class="nav-link" href="getting-started.html">Getting Started</a><a class="nav-link" href="core-concepts.html">Core Concepts</a></div><div class="nav-group"><div class="nav-title">Fundamentals</div><a class="nav-link" href="dependency-injection.html">Dependency Injection</a><a class="nav-link" href="reactive-values.html">Reactive Values</a><a class="nav-link" href="stores-effects.html">Stores &amp; Effects</a><a class="nav-link" href="flutter-ui.html">Flutter UI</a><a class="nav-link" href="intent-store.html">IntentStore</a></div><div class="nav-group"><div class="nav-title">Capabilities</div><a class="nav-link" href="history.html">History</a><a class="nav-link" href="streams.html">Streams</a><a class="nav-link" href="async-state.html">Async State</a><a class="nav-link" href="parameterized-state.html">Parameterized State</a></div><div class="nav-group"><div class="nav-title">Reference</div><a class="nav-link" href="api.html">API Outline</a><a class="nav-link" href="testing.html">Testing</a><a class="nav-link active" href="migration.html">Migration to 2.1</a><a class="nav-link" href="changelog.html">Changelog</a><a class="nav-link" href="publishing.html">Publishing</a></div><div class="sidebar-foot">Popsicle 2.1.0<br>Flutter state management.<br><a href="https://github.com/ardevcraft/popsicle/issues" target="_blank">Report an issue ↗</a></div></aside><main class="main"><article class="doc-wrap"><header class="doc-header"><span class="eyebrow">Popsicle docs · 2.1.0</span><h1>Migration to 2.1</h1><p>Migrate emit to commit, view to ui, and adopt History and streams.</p></header><div class="doc-content"><h1 id="migrating-to-popsicle-21">Migrating to Popsicle 2.1</h1>
+<p>Popsicle 2.1 keeps the 2.0 declaration and <code>Scope</code> model, while tightening the state-transition vocabulary and adding opt-in Store capabilities.</p>
+<h2 id="state-transition-rename">State transition rename</h2>
+<p>Use <code>commit(...)</code> for persistent Store state:</p>
+<pre><code class="language-dart">// Before
+emit(nextState);
+
+// 2.1
+commit(nextState);
+</code></pre>
+<p><code>effect(...)</code> is unchanged and remains the one-shot output channel.</p>
+<h2 id="ui-projection-rename">UI projection rename</h2>
+<p>Use <code>.ui()</code>:</p>
+<pre><code class="language-dart">// Before
+counter.view(
+  (context, state, store) =&gt; Text('$state'),
+);
+
+// 2.1
+counter.ui(
+  (context, state, store) =&gt; Text('$state'),
+);
+</code></pre>
+<p>The corresponding public extension names are now <code>PopsicleStoreUi</code> and <code>ReactiveValueUi</code>.</p>
+<h2 id="undo-redo">Undo / redo</h2>
+<p>Add <code>History&lt;State&gt;</code> only to Stores that need it:</p>
+<pre><code class="language-dart">class EditorStore extends Store&lt;EditorState&gt; with History&lt;EditorState&gt; {
+  EditorStore() : super(const EditorState());
+}
+</code></pre>
+<p>Then use:</p>
+<pre><code class="language-dart">store.undo();
+store.redo();
+store.canUndo;
+store.canRedo;
+</code></pre>
+<p>Normal Stores have no history behavior or history storage.</p>
+<h2 id="streams">Streams</h2>
+<p>A Store can now own stream subscriptions through <code>listenTo(...)</code>:</p>
+<pre><code class="language-dart">class LiveStore extends Store&lt;LiveState&gt; {
+  LiveStore(Stream&lt;Event&gt; events) : super(const LiveState()) {
+    listenTo(
+      events,
+      onData: (event) {
+        commit(state.apply(event));
+      },
+    );
+  }
+}
+</code></pre>
+<p>Subscriptions registered with <code>listenTo</code> are cancelled automatically when the Store is disposed.</p>
+<h2 id="what-did-not-change">What did not change</h2>
+<p>The recommended declarations remain:</p>
+<pre><code class="language-dart">Popsicle.inject(...)
+Popsicle.value(...)
+Popsicle.create(...)
+Popsicle.params(...)
+</code></pre>
+<p><code>Scope</code> remains:</p>
+<pre><code class="language-dart">scope.get(...)
+scope.use(...)
+scope.store(...)
+scope.select(...)
+</code></pre>
+<p>And the core types remain <code>Store</code>, <code>IntentStore</code>, <code>ReactiveValue</code>, and <code>AsyncState</code>.</p>
+</div><nav class="page-nav"><a href="api.html"><small>Previous</small><strong>API Outline</strong></a><a href="changelog.html"><small>Next</small><strong>Changelog</strong></a></nav></article></main></div><div class="search-overlay" role="dialog" aria-modal="true" aria-label="Search documentation"><div class="search-panel"><div class="search-input-wrap"><input class="search-input" type="search" placeholder="Search Store, History, streams, Scope…" autocomplete="off"></div><div class="search-results"><div class="search-empty">Type to search the Popsicle docs.</div></div></div></div><script src="assets/app.js"></script></body></html>

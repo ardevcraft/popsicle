@@ -1,0 +1,56 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Publishing · Popsicle</title><meta name="description" content="Validate, tag, publish, and document a Popsicle release.">
+<meta name="theme-color" content="#ff4f64"><link rel="icon" type="image/png" href="assets/icon.png"><link rel="manifest" href="site.webmanifest"><link rel="canonical" href="https://ardevcraft.github.io/popsicle/publishing.html">
+<meta property="og:title" content="Publishing · Popsicle"><meta property="og:description" content="Validate, tag, publish, and document a Popsicle release."><meta property="og:type" content="article"><meta property="og:url" content="https://ardevcraft.github.io/popsicle/publishing.html"><meta property="og:image" content="https://ardevcraft.github.io/popsicle/assets/philosophy.png">
+<link rel="stylesheet" href="assets/styles.css"></head><body>
+<header class="header">
+      <button class="icon-btn menu-btn" type="button" aria-label="Open navigation" data-menu>☰</button>
+      <a class="brand" href="index.html"><img src="assets/icon.png" alt=""><span>Popsicle</span><small>v2.1.0</small></a>
+      <div class="header-actions">
+        <button class="search-btn" type="button" data-search aria-label="Search docs">⌕ <span>Search docs</span><kbd>⌘ K</kbd></button>
+        <button class="icon-btn" type="button" data-theme-toggle aria-label="Toggle theme">◐</button>
+        <a class="repo-btn" href="https://github.com/ardevcraft/popsicle" target="_blank" rel="noreferrer">GitHub ↗</a>
+      </div>
+    </header><div class="layout"><aside class="sidebar" aria-label="Documentation navigation"><div class="nav-group"><div class="nav-title">Start</div><a class="nav-link" href="index.html">Overview</a><a class="nav-link" href="getting-started.html">Getting Started</a><a class="nav-link" href="core-concepts.html">Core Concepts</a></div><div class="nav-group"><div class="nav-title">Fundamentals</div><a class="nav-link" href="dependency-injection.html">Dependency Injection</a><a class="nav-link" href="reactive-values.html">Reactive Values</a><a class="nav-link" href="stores-effects.html">Stores &amp; Effects</a><a class="nav-link" href="flutter-ui.html">Flutter UI</a><a class="nav-link" href="intent-store.html">IntentStore</a></div><div class="nav-group"><div class="nav-title">Capabilities</div><a class="nav-link" href="history.html">History</a><a class="nav-link" href="streams.html">Streams</a><a class="nav-link" href="async-state.html">Async State</a><a class="nav-link" href="parameterized-state.html">Parameterized State</a></div><div class="nav-group"><div class="nav-title">Reference</div><a class="nav-link" href="api.html">API Outline</a><a class="nav-link" href="testing.html">Testing</a><a class="nav-link" href="migration.html">Migration to 2.1</a><a class="nav-link" href="changelog.html">Changelog</a><a class="nav-link active" href="publishing.html">Publishing</a></div><div class="sidebar-foot">Popsicle 2.1.0<br>Flutter state management.<br><a href="https://github.com/ardevcraft/popsicle/issues" target="_blank">Report an issue ↗</a></div></aside><main class="main"><article class="doc-wrap"><header class="doc-header"><span class="eyebrow">Popsicle docs · 2.1.0</span><h1>Publishing</h1><p>Validate, tag, publish, and document a Popsicle release.</p></header><div class="doc-content"><h1 id="publishing-popsicle">Publishing Popsicle</h1>
+<p>Current release: <strong>2.1.0</strong></p>
+<h2 id="1-validate-locally">1. Validate locally</h2>
+<p>Run from the package root:</p>
+<pre><code class="language-bash">flutter pub get
+flutter analyze
+flutter test
+flutter pub publish --dry-run
+</code></pre>
+<p>Run the example app as an integration check:</p>
+<pre><code class="language-bash">cd example
+flutter pub get
+flutter run
+</code></pre>
+<p>The 2.1 example includes dependency injection, ReactiveValue, Store <code>.ui()</code>, IntentStore, History, streams, async state, combined async sources, and parameterized Stores.</p>
+<h2 id="2-verify-release-metadata">2. Verify release metadata</h2>
+<p>Confirm:</p>
+<ul>
+<li><code>pubspec.yaml</code> says <code>2.1.0</code></li>
+<li><code>CHANGELOG.md</code> starts with <code>2.1.0</code></li>
+<li>README examples use <code>commit(...)</code> and <code>.ui()</code></li>
+<li><code>History&lt;State&gt;</code> is exported</li>
+<li>stream examples use Store <code>listenTo(...)</code></li>
+<li><code>LICENSE</code> and <code>NOTICE</code> are included</li>
+<li>repository/homepage/issue tracker/documentation URLs are correct</li>
+<li>screenshots referenced by <code>pubspec.yaml</code> exist</li>
+<li>generated build output, <code>.dart_tool</code>, and repository-local <code>.git</code> data are not included in the publish archive</li>
+</ul>
+<h2 id="3-tag-the-release">3. Tag the release</h2>
+<pre><code class="language-bash">git add .
+git commit -m &quot;release: popsicle 2.1.0&quot;
+git tag v2.1.0
+git push origin main --tags
+</code></pre>
+<p>Use the repository's actual default branch if it is not <code>main</code>.</p>
+<h2 id="4-publish">4. Publish</h2>
+<pre><code class="language-bash">flutter pub publish
+</code></pre>
+<p>Review the package contents before confirming.</p>
+<h2 id="5-wiki">5. Wiki</h2>
+<p>The <code>wiki/</code> directory contains the Markdown pages for the 2.1 API. Push/copy those pages to the GitHub Wiki repository when publishing documentation updates.</p>
+</div><nav class="page-nav"><a href="changelog.html"><small>Previous</small><strong>Changelog</strong></a><div class="empty"></div></nav></article></main></div><div class="search-overlay" role="dialog" aria-modal="true" aria-label="Search documentation"><div class="search-panel"><div class="search-input-wrap"><input class="search-input" type="search" placeholder="Search Store, History, streams, Scope…" autocomplete="off"></div><div class="search-results"><div class="search-empty">Type to search the Popsicle docs.</div></div></div></div><script src="assets/app.js"></script></body></html>

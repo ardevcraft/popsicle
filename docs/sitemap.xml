@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<url><loc>https://ardevcraft.github.io/popsicle/</loc></url>
+<url><loc>https://ardevcraft.github.io/popsicle/getting-started.html</loc></url>
+<url><loc>https://ardevcraft.github.io/popsicle/core-concepts.html</loc></url>
+<url><loc>https://ardevcraft.github.io/popsicle/dependency-injection.html</loc></url>
+<url><loc>https://ardevcraft.github.io/popsicle/reactive-values.html</loc></url>
+<url><loc>https://ardevcraft.github.io/popsicle/stores-effects.html</loc></url>
+<url><loc>https://ardevcraft.github.io/popsicle/flutter-ui.html</loc></url>
+<url><loc>https://ardevcraft.github.io/popsicle/intent-store.html</loc></url>
+<url><loc>https://ardevcraft.github.io/popsicle/history.html</loc></url>
+<url><loc>https://ardevcraft.github.io/popsicle/streams.html</loc></url>
+<url><loc>https://ardevcraft.github.io/popsicle/async-state.html</loc></url>
+<url><loc>https://ardevcraft.github.io/popsicle/parameterized-state.html</loc></url>
+<url><loc>https://ardevcraft.github.io/popsicle/testing.html</loc></url>
+<url><loc>https://ardevcraft.github.io/popsicle/api.html</loc></url>
+<url><loc>https://ardevcraft.github.io/popsicle/migration.html</loc></url>
+<url><loc>https://ardevcraft.github.io/popsicle/changelog.html</loc></url>
+<url><loc>https://ardevcraft.github.io/popsicle/publishing.html</loc></url>
+</urlset>

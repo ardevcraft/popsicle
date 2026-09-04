@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://ardevcraft.github.io/popsicle/sitemap.xml
