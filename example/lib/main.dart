@@ -5,9 +5,11 @@ import 'examples/async_store_example.dart';
 import 'examples/combined_async_example.dart';
 import 'examples/counter_consumer_example.dart';
 import 'examples/dependency_example.dart';
+import 'examples/history_example.dart';
 import 'examples/intent_store_example.dart';
 import 'examples/params_example.dart';
 import 'examples/reactive_value_example.dart';
+import 'examples/stream_store_example.dart';
 
 final themeMode = Popsicle.value(ThemeMode.system);
 
@@ -59,11 +61,11 @@ class ExampleHomePage extends StatelessWidget {
       ),
       (
         title: 'ReactiveValue',
-        subtitle: 'Popsicle.value + value.view()',
+        subtitle: 'Popsicle.value + value.ui()',
         page: const ReactiveValueExample(),
       ),
       (
-        title: 'Store view',
+        title: 'Store UI',
         subtitle: 'Popsicle.create + state/effect UI projection',
         page: const CounterConsumerExample(),
       ),
@@ -83,6 +85,16 @@ class ExampleHomePage extends StatelessWidget {
         page: const IntentStoreExample(),
       ),
       (
+        title: 'History',
+        subtitle: 'Opt-in undo/redo for immutable Store state',
+        page: const HistoryExample(),
+      ),
+      (
+        title: 'Streams',
+        subtitle: 'Store-owned subscriptions with automatic disposal',
+        page: const StreamStoreExample(),
+      ),
+      (
         title: 'Parameterized Store',
         subtitle: 'Popsicle.params with independent keyed state',
         page: const ParamsExample(),
@@ -92,6 +104,7 @@ class ExampleHomePage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Popsicle examples'),
+
         actions: [
           PopsicleBuilder(
             builder: (context, scope, child) {

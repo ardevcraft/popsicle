@@ -49,8 +49,8 @@ class ReactiveBuilder<T> extends ConsumerWidget {
 }
 
 /// Compact `UI = f(state)` projection for a [ReactiveValue].
-extension ReactiveValueView<T> on ReactiveValue<T> {
-  Widget view(
+extension ReactiveValueUi<T> on ReactiveValue<T> {
+  Widget ui(
     Widget Function(T value) builder, {
     Key? key,
   }) {

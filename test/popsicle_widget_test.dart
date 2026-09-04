@@ -30,7 +30,7 @@ void main() {
     expect(find.text('1'), findsOneWidget);
   });
 
-  testWidgets('ReactiveValue.view works in a normal StatelessWidget', (
+  testWidgets('ReactiveValue.ui works in a normal StatelessWidget', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -52,7 +52,7 @@ void main() {
     expect(find.text('0'), findsOneWidget);
   });
 
-  testWidgets('Store.view builds Store state', (tester) async {
+  testWidgets('Store.ui builds Store state', (tester) async {
     await tester.pumpWidget(
       const Popsicle(
         child: MaterialApp(
@@ -69,7 +69,7 @@ void main() {
     expect(find.text('1'), findsOneWidget);
   });
 
-  testWidgets('Store.view receives only explicitly emitted effects', (
+  testWidgets('Store.ui receives only explicitly emitted effects', (
     tester,
   ) async {
     final effects = <int>[];
@@ -96,7 +96,7 @@ void main() {
     expect(effects, [2]);
   });
 
-  testWidgets('effect-only emission does not rebuild Store.view', (
+  testWidgets('effect-only emission does not rebuild Store.ui', (
     tester,
   ) async {
     final effects = <int>[];
@@ -148,7 +148,7 @@ void main() {
 class _CounterStore extends Store<int> {
   _CounterStore() : super(0);
 
-  void increment() => emit(state + 1);
+  void increment() => commit(state + 1);
 }
 
 class _CounterPage extends PopsicleWidget {
@@ -180,7 +180,7 @@ class _EffectCounterStore extends Store<int> {
 
   void increment() {
     final next = state + 1;
-    emit(next);
+    commit(next);
 
     if (next.isEven) {
       effect(_EvenCountEffect(next));
@@ -201,7 +201,7 @@ class _EffectConsumerHarness extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _effectCounter.view(
+    return _effectCounter.ui(
       (context, state, store) {
         onBuild?.call();
         return Scaffold(
@@ -239,7 +239,7 @@ class _ReactiveValuePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _reactiveCounter.view(
+      body: _reactiveCounter.ui(
         (count) => Text('$count'),
       ),
       floatingActionButton: PopsicleBuilder(

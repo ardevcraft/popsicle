@@ -16,15 +16,15 @@ class CounterStore extends Store<int> {
 
   void increment() {
     final next = state + 1;
-    emit(next);
+    commit(next);
 
     if (next == 5) {
       effect(CounterReachedLimit(next));
     }
   }
 
-  void decrement() => emit(state - 1);
-  void reset() => emit(0);
+  void decrement() => commit(state - 1);
+  void reset() => commit(0);
 }
 
 final counterStore = Popsicle.create(
@@ -37,9 +37,9 @@ class CounterConsumerExample extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Store.view')),
+      appBar: AppBar(title: const Text('Store.ui')),
       body: Center(
-        child: counterStore.view(
+        child: counterStore.ui(
           (context, count, store) {
             return Column(
               mainAxisSize: MainAxisSize.min,

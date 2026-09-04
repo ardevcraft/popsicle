@@ -11,22 +11,48 @@ abstract class Store<State> extends StateNotifier<State> {
 
   final StreamController<Object> _effects =
       StreamController<Object>.broadcast(sync: true);
+  final List<StreamSubscription<dynamic>> _subscriptions =
+      <StreamSubscription<dynamic>>[];
 
   @override
   State get state => super.state;
 
-  /// Emits the next persistent state.
+  /// Commits the next persistent state.
   @protected
-  void emit(State next) {
+  void commit(State next) {
     super.state = next;
   }
 
-  /// Emits a one-shot side effect.
+  /// Sends a one-shot side effect.
   @protected
   void effect(Object value) {
     if (!_effects.isClosed) {
       _effects.add(value);
     }
+  }
+
+  /// Subscribes this Store to an external stream.
+  ///
+  /// The subscription is owned by the Store and is cancelled automatically
+  /// when the Store is disposed. The returned subscription can still be used
+  /// for explicit pause, resume, or early cancellation when needed.
+  @protected
+  StreamSubscription<T> listenTo<T>(
+    Stream<T> stream, {
+    required void Function(T value) onData,
+    void Function(Object error, StackTrace stackTrace)? onError,
+    void Function()? onDone,
+    bool cancelOnError = false,
+  }) {
+    final subscription = stream.listen(
+      onData,
+      onError: onError,
+      onDone: onDone,
+      cancelOnError: cancelOnError,
+    );
+
+    _subscriptions.add(subscription);
+    return subscription;
   }
 
   /// Low-level subscription to one-shot Store effects.
@@ -41,6 +67,11 @@ abstract class Store<State> extends StateNotifier<State> {
 
   @override
   void dispose() {
+    for (final subscription in _subscriptions) {
+      unawaited(subscription.cancel());
+    }
+    _subscriptions.clear();
+
     unawaited(_effects.close());
     super.dispose();
   }

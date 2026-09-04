@@ -1,116 +1,97 @@
-# Migrating to Popsicle 3.0
+# Migrating to Popsicle 2.1
 
-Popsicle 3.0 simplifies the public vocabulary around one declaration namespace and one scoped dependency context.
+Popsicle 2.1 keeps the 2.0 declaration and `Scope` model, while tightening the state-transition vocabulary and adding opt-in Store capabilities.
 
-## Declaration migration
+## State transition rename
 
-| Previous API | Popsicle 3.0 recommended API |
-| --- | --- |
-| `Dependency((ref) => ...)` | `Popsicle.inject((scope) => ...)` |
-| `ReactiveValue(value)` | `Popsicle.value(value)` |
-| `StoreProvider((ref) => ...)` | `Popsicle.create((scope) => ...)` |
-| `StoreProvider.params(...)` | `Popsicle.params(...)` |
-
-The underlying declaration classes remain available for advanced compatibility, but new code should prefer `Popsicle.*`.
-
-## Reference migration
+Use `commit(...)` for persistent Store state:
 
 ```dart
 // Before
-ref.read(apiClient)
-ref.watch(themeMode)
+emit(nextState);
+
+// 2.1
+commit(nextState);
 ```
 
-```dart
-// 3.0
-scope.get(apiClient)
-scope.use(themeMode)
-```
+`effect(...)` is unchanged and remains the one-shot output channel.
 
-Meaning:
+## UI projection rename
 
-```text
-get = access without a reactive relationship
-use = access and depend on future changes
-```
-
-## Store access
+Use `.ui()`:
 
 ```dart
 // Before
-final state = ref.watch(counter);
-final store = ref.store(counter);
-```
-
-```dart
-// 3.0 low-level widget
-final state = scope.use(counter);
-final store = scope.store(counter);
-```
-
-Most UI can remove both lookups entirely by using `.view()`:
-
-```dart
 counter.view(
-  (context, state, store) {
-    return Text('$state');
-  },
+  (context, state, store) => Text('$state'),
+);
+
+// 2.1
+counter.ui(
+  (context, state, store) => Text('$state'),
 );
 ```
 
-## ReactiveValue UI
+The corresponding public extension names are now `PopsicleStoreUi` and `ReactiveValueUi`.
+
+## Undo / redo
+
+Add `History<State>` only to Stores that need it:
 
 ```dart
-// Before
-class CounterView extends PopsicleWidget {
-  Widget build(BuildContext context, PopRef ref) {
-    final count = ref.watch(counter);
-    return Text('$count');
-  }
+class EditorStore extends Store<EditorState> with History<EditorState> {
+  EditorStore() : super(const EditorState());
 }
 ```
 
+Then use:
+
 ```dart
-// 3.0
-class CounterView extends StatelessWidget {
-  Widget build(BuildContext context) {
-    return counter.view(
-      (count) => Text('$count'),
+store.undo();
+store.redo();
+store.canUndo;
+store.canRedo;
+```
+
+Normal Stores have no history behavior or history storage.
+
+## Streams
+
+A Store can now own stream subscriptions through `listenTo(...)`:
+
+```dart
+class LiveStore extends Store<LiveState> {
+  LiveStore(Stream<Event> events) : super(const LiveState()) {
+    listenTo(
+      events,
+      onData: (event) {
+        commit(state.apply(event));
+      },
     );
   }
 }
 ```
 
-Mutation:
+Subscriptions registered with `listenTo` are cancelled automatically when the Store is disposed.
+
+## What did not change
+
+The recommended declarations remain:
 
 ```dart
-scope.set(counter, 0);
-scope.update(counter, (value) => value + 1);
+Popsicle.inject(...)
+Popsicle.value(...)
+Popsicle.create(...)
+Popsicle.params(...)
 ```
 
-## PopsicleWidget
+`Scope` remains:
 
 ```dart
-class Header extends PopsicleWidget {
-  @override
-  Widget build(BuildContext context, Scope scope) {
-    final theme = scope.use(themeMode);
-    return Text('$theme');
-  }
-}
+scope.get(...)
+scope.use(...)
+scope.store(...)
+scope.select(...)
 ```
 
-
-## IntentStore
-
-`IntentStore` is the current name for the optional structured intent workflow.
-
-```text
-Intent -> IntentStore -> State -> UI
-```
-
-Simple Stores should continue using normal Dart methods.
-
-## Versioning
-
-The public reference/declaration syntax is a breaking API change, so the publishable package is versioned as **3.0.0**.
+And the core types remain `Store`, `IntentStore`, `ReactiveValue`, and `AsyncState`.

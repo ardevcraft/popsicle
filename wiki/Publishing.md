@@ -1,6 +1,8 @@
 # Publishing
 
-Before publishing a Popsicle release:
+Current documented release: **2.1.0**.
+
+Before publishing:
 
 ```bash
 flutter pub get
@@ -9,6 +11,6 @@ flutter test
 flutter pub publish --dry-run
 ```
 
-Then verify the package version, changelog, README, LICENSE/NOTICE, screenshots, and repository metadata.
+Verify the package version, changelog, README, LICENSE/NOTICE, screenshots, History/Stream examples, and repository metadata.
 
 See the root `PUBLISHING.md` for the complete checklist.

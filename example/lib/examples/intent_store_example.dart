@@ -22,10 +22,10 @@ class IntentCounterStore extends IntentStore<int, CounterIntent> {
   FutureOr<void> onIntent(CounterIntent intent) {
     switch (intent) {
       case IncrementIntent():
-        emit(state + 1);
+        commit(state + 1);
         break;
       case ResetIntent():
-        emit(0);
+        commit(0);
         break;
     }
   }
@@ -43,7 +43,7 @@ class IntentStoreExample extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('IntentStore')),
       body: Center(
-        child: intentCounter.view(
+        child: intentCounter.ui(
           (context, state, store) {
             return Column(
               mainAxisSize: MainAxisSize.min,

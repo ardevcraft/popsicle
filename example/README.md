@@ -1,17 +1,23 @@
-# popsicle_example
+# Popsicle example
 
-A new Flutter project.
+Runnable examples for the Popsicle 2.1 public API.
 
-## Getting Started
+Included examples:
 
-This project is a starting point for a Flutter application.
+- `Popsicle.inject` and `Scope`
+- `Popsicle.value` and `ReactiveValue.ui()`
+- `Popsicle.create` and Store `.ui()`
+- one-shot Store effects
+- `IntentStore` and `dispatch`
+- opt-in `History<State>` undo/redo
+- Store `listenTo(...)` stream ownership
+- `AsyncState<T>`
+- `Async.combine2`
+- `Popsicle.params`
 
-A few resources to get you started if this is your first Flutter project:
+Run from this directory:
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```bash
+flutter pub get
+flutter run
+```

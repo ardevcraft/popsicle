@@ -11,13 +11,13 @@ class MessageStore extends Store<AsyncState<String>> {
   MessageStore() : super(const AsyncState.idle());
 
   Future<void> load() async {
-    emit(AsyncState.loading(previous: state));
+    commit(AsyncState.loading(previous: state));
 
     try {
       await Future<void>.delayed(const Duration(milliseconds: 700));
-      emit(const AsyncState.data('Loaded with a normal Store.'));
+      commit(const AsyncState.data('Loaded with a normal Store.'));
     } catch (error, stackTrace) {
-      emit(
+      commit(
         AsyncState.error(
           error,
           stackTrace,
@@ -41,7 +41,7 @@ class AsyncStoreExample extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Async Store')),
       body: Center(
-        child: messageStore.view(
+        child: messageStore.ui(
           (context, asyncState, store) {
             return Padding(
               padding: const EdgeInsets.all(24),

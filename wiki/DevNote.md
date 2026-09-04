@@ -11,18 +11,31 @@ Popsicle.inject
 Popsicle.value
 Popsicle.create
 Popsicle.params
+
 Scope.get
 Scope.use
+Scope.store
+
 Store
 IntentStore
 ReactiveValue
-.view()
+
+commit()
+effect()
+listenTo()
+History<State>
+.ui()
+```
+
+## Core separation
+
+```text
+State   -> persistent and reactive
+Effect  -> one-shot occurrence
+Stream  -> external input into Store
+History -> optional state snapshot timeline
 ```
 
 ## Internal engine
 
-The package retains a vendored, attributed graph/subscription engine. Internal provider/reference terminology must not leak into `lib/src/api`, examples, README, or wiki documentation.
-
-## Compatibility types
-
-Low-level declaration classes may remain public for advanced migration/override use, but primary documentation should always lead with the `Popsicle.*` namespace.
+The package retains an attributed graph/subscription engine internally. Provider/reference terminology should not leak into the primary public API, examples, README, or wiki documentation.

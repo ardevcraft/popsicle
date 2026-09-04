@@ -45,8 +45,7 @@ class Popsicle extends StatelessWidget {
   }
 
   /// Declares a structured reactive Store.
-  static StoreHandle<StoreT, State>
-      create<StoreT extends Store<State>, State>(
+  static StoreHandle<StoreT, State> create<StoreT extends Store<State>, State>(
     StoreT Function(Scope scope) create, {
     String? name,
   }) {
@@ -127,7 +126,7 @@ typedef PopsicleStoreEffect = void Function(
   Object effect,
 );
 
-/// Explicit Store widget used underneath the `.view()` API.
+/// Explicit Store widget used underneath the `.ui()` API.
 class PopsicleConsumer<StoreT extends Store<State>, State>
     extends ConsumerStatefulWidget {
   const PopsicleConsumer({
@@ -240,9 +239,9 @@ class _PopsicleConsumerState<StoreT extends Store<State>, State>
 }
 
 /// Compact `UI = f(state)` projection for direct and parameterized Stores.
-extension PopsicleStoreView<StoreT extends Store<State>, State>
+extension PopsicleStoreUi<StoreT extends Store<State>, State>
     on StoreHandle<StoreT, State> {
-  Widget view(
+  Widget ui(
     Widget Function(
       BuildContext context,
       State state,

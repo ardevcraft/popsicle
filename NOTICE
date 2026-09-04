@@ -9,7 +9,7 @@ Popsicle-specific public APIs include:
 - Scope.get / Scope.use
 - Dependency / ReactiveValue
 - Store / IntentStore
-- Store and ReactiveValue .view() projections
+- Store and ReactiveValue .ui() projections
 - dedicated Store effect channel
 - AsyncState / Async.combine2/3/4
 - PopsicleWidget / PopsicleBuilder / PopsicleConsumer

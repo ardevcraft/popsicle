@@ -9,7 +9,7 @@ final selectedTab = Popsicle.value(0);
 Render:
 
 ```dart
-selectedTab.view(
+selectedTab.ui(
   (index) => Text('$index'),
 );
 ```

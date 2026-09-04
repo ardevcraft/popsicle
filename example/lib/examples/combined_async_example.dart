@@ -48,13 +48,13 @@ class DashboardStore extends Store<DashboardState> {
 
   Future<void> _loadProfile() async {
     final previous = state.profile;
-    emit(state.withProfile(AsyncState.loading(previous: previous)));
+    commit(state.withProfile(AsyncState.loading(previous: previous)));
 
     try {
       await Future<void>.delayed(const Duration(milliseconds: 500));
-      emit(state.withProfile(const AsyncState.data('AR Rahman')));
+      commit(state.withProfile(const AsyncState.data('AR Rahman')));
     } catch (error, stackTrace) {
-      emit(
+      commit(
         state.withProfile(
           AsyncState.error(error, stackTrace, previous: previous),
         ),
@@ -65,13 +65,13 @@ class DashboardStore extends Store<DashboardState> {
 
   Future<void> _loadMetrics() async {
     final previous = state.metrics;
-    emit(state.withMetrics(AsyncState.loading(previous: previous)));
+    commit(state.withMetrics(AsyncState.loading(previous: previous)));
 
     try {
       await Future<void>.delayed(const Duration(milliseconds: 900));
-      emit(state.withMetrics(const AsyncState.data(42)));
+      commit(state.withMetrics(const AsyncState.data(42)));
     } catch (error, stackTrace) {
-      emit(
+      commit(
         state.withMetrics(
           AsyncState.error(error, stackTrace, previous: previous),
         ),
@@ -93,7 +93,7 @@ class CombinedAsyncExample extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Combined async sources')),
       body: Center(
-        child: dashboardStore.view(
+        child: dashboardStore.ui(
           (context, state, store) {
             final content = state.content;
 

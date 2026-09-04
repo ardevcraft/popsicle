@@ -18,7 +18,7 @@ export 'src/api/flutter_api.dart'
         PopsicleConsumer,
         PopsicleStoreBuild,
         PopsicleStoreEffect,
-        PopsicleStoreView,
+        PopsicleStoreUi,
         PopsicleWidget;
 export 'src/api/reactive_value.dart'
     show
@@ -26,7 +26,8 @@ export 'src/api/reactive_value.dart'
         PopsicleScopeReactiveValueExtension,
         ReactiveBuilder,
         ReactiveValue,
-        ReactiveValueView;
+        ReactiveValueUi;
+export 'src/api/history.dart' show History;
 export 'src/api/store.dart'
     show
         IntentStore,

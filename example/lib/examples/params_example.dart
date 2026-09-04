@@ -6,7 +6,7 @@ class ItemCounterStore extends Store<int> {
 
   final int itemId;
 
-  void increment() => emit(state + 1);
+  void increment() => commit(state + 1);
 }
 
 final itemCounters = Popsicle.params(
@@ -40,7 +40,7 @@ class _CounterTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: itemCounters(itemId).view(
+      child: itemCounters(itemId).ui(
         (context, count, store) {
           return ListTile(
             title: Text('Item ${store.itemId}'),

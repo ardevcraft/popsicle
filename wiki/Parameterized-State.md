@@ -14,7 +14,7 @@ final user = Popsicle.params(
 Render one instance:
 
 ```dart
-user(42).view(
+user(42).ui(
   (context, state, store) => UserProfile(state: state),
 );
 ```

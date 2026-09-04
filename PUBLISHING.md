@@ -1,6 +1,6 @@
 # Publishing Popsicle
 
-Current release: **3.0.0**
+Current release: **2.1.0**
 
 ## 1. Validate locally
 
@@ -13,7 +13,7 @@ flutter test
 flutter pub publish --dry-run
 ```
 
-Run the example app as an additional integration check:
+Run the example app as an integration check:
 
 ```bash
 cd example
@@ -21,27 +21,32 @@ flutter pub get
 flutter run
 ```
 
+The 2.1 example includes dependency injection, ReactiveValue, Store `.ui()`, IntentStore, History, streams, async state, combined async sources, and parameterized Stores.
+
 ## 2. Verify release metadata
 
 Confirm:
 
-- `pubspec.yaml` version matches `CHANGELOG.md`
-- README examples compile against the current public exports
+- `pubspec.yaml` says `2.1.0`
+- `CHANGELOG.md` starts with `2.1.0`
+- README examples use `commit(...)` and `.ui()`
+- `History<State>` is exported
+- stream examples use Store `listenTo(...)`
 - `LICENSE` and `NOTICE` are included
 - repository/homepage/issue tracker/documentation URLs are correct
 - screenshots referenced by `pubspec.yaml` exist
-- no generated build output or platform-local files are committed
+- generated build output, `.dart_tool`, and repository-local `.git` data are not included in the publish archive
 
 ## 3. Tag the release
 
 ```bash
 git add .
-git commit -m "release: popsicle 3.0.0"
-git tag v3.0.0
+git commit -m "release: popsicle 2.1.0"
+git tag v2.1.0
 git push origin main --tags
 ```
 
-Use your actual default branch if it is not `main`.
+Use the repository's actual default branch if it is not `main`.
 
 ## 4. Publish
 
@@ -49,8 +54,8 @@ Use your actual default branch if it is not `main`.
 flutter pub publish
 ```
 
-Review the package contents and confirm when prompted.
+Review the package contents before confirming.
 
 ## 5. Wiki
 
-The `wiki/` directory contains the Markdown pages for the 3.0 API. Copy/push them to the GitHub Wiki repository if the project uses GitHub Wiki hosting.
+The `wiki/` directory contains the Markdown pages for the 2.1 API. Push/copy those pages to the GitHub Wiki repository when publishing documentation updates.

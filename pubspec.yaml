@@ -1,6 +1,6 @@
 name: popsicle
-description: A compact Flutter state-management package built around explicit dependencies, reactive values, Stores, effects, and composable async state.
-version: 2.0.0
+description: Compact Flutter state management with scoped DI, reactive values, Stores, effects, undo/redo history, streams, and composable async state.
+version: 2.1.0
 homepage: https://github.com/ardevcraft/popsicle
 repository: https://github.com/ardevcraft/popsicle
 issue_tracker: https://github.com/ardevcraft/popsicle/issues

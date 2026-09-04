@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:popsicle/popsicle.dart';
 
@@ -35,7 +37,6 @@ void main() {
       container.set(selected, 4);
       expect(container.get(doubled), 8);
     });
-
 
     test('PopsicleOverride replaces a dependency without engine types', () {
       final api = Popsicle.inject((_) => 'prod');
@@ -103,7 +104,6 @@ void main() {
       expect(container.get(counter), 1);
     });
 
-
     test('StoreHandle override keeps the public API Popsicle-owned', () {
       final counter = Popsicle.create((_) => CounterStore(0));
       final container = PopsicleContainer(
@@ -163,6 +163,115 @@ void main() {
     });
   });
 
+  group('History', () {
+    test('tracks committed snapshots and supports undo/redo', () {
+      final store = HistoryCounterStore();
+      addTearDown(store.dispose);
+
+      expect(store.state, 0);
+      expect(store.canUndo, isFalse);
+      expect(store.canRedo, isFalse);
+
+      store.increment();
+      store.increment();
+      store.increment();
+
+      expect(store.state, 3);
+      expect(store.undoCount, 3);
+      expect(store.redoCount, 0);
+
+      expect(store.undo(), isTrue);
+      expect(store.state, 2);
+      expect(store.undoCount, 2);
+      expect(store.redoCount, 1);
+
+      expect(store.undo(), isTrue);
+      expect(store.state, 1);
+
+      expect(store.redo(), isTrue);
+      expect(store.state, 2);
+    });
+
+    test('new commit after undo clears redo history', () {
+      final store = HistoryCounterStore();
+      addTearDown(store.dispose);
+
+      store.increment();
+      store.increment();
+      expect(store.undo(), isTrue);
+      expect(store.canRedo, isTrue);
+
+      store.add(10);
+
+      expect(store.state, 11);
+      expect(store.canRedo, isFalse);
+    });
+
+    test('history limit bounds retained snapshots', () {
+      final store = LimitedHistoryCounterStore();
+      addTearDown(store.dispose);
+
+      for (var i = 0; i < 5; i++) {
+        store.increment();
+      }
+
+      expect(store.state, 5);
+      expect(store.undoCount, 2);
+
+      expect(store.undo(), isTrue);
+      expect(store.state, 4);
+      expect(store.undo(), isTrue);
+      expect(store.state, 3);
+      expect(store.undo(), isFalse);
+    });
+
+    test('effects are not replayed by undo/redo', () {
+      final store = HistoryEffectStore();
+      addTearDown(store.dispose);
+      final effects = <Object>[];
+      final subscription = store.listenEffects(effects.add);
+      addTearDown(subscription.cancel);
+
+      store.incrementAndNotify();
+      expect(effects, ['changed']);
+
+      store.undo();
+      store.redo();
+
+      expect(effects, ['changed']);
+    });
+  });
+
+  group('Store streams', () {
+    test('listenTo commits stream values', () async {
+      final controller = StreamController<int>(sync: true);
+      addTearDown(controller.close);
+      final store = StreamCounterStore(controller.stream);
+      addTearDown(store.dispose);
+
+      controller.add(4);
+      controller.add(9);
+
+      expect(store.state, 9);
+      expect(store.received, [4, 9]);
+    });
+
+    test('listenTo subscription is cancelled with Store disposal', () async {
+      final controller = StreamController<int>(sync: true);
+      addTearDown(controller.close);
+      final store = StreamCounterStore(controller.stream);
+
+      controller.add(1);
+      expect(store.received, [1]);
+
+      store.dispose();
+      controller.add(2);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(store.received, [1]);
+    });
+  });
+
   group('AsyncState', () {
     test('combine2 returns a record when both sources have values', () {
       const first = AsyncState.data(1);
@@ -218,7 +327,7 @@ void main() {
 class CounterStore extends Store<int> {
   CounterStore(super.initial);
 
-  void increment() => emit(state + 1);
+  void increment() => commit(state + 1);
 }
 
 sealed class CounterIntent {
@@ -236,7 +345,7 @@ class IntentCounterStore extends IntentStore<int, CounterIntent> {
   void onIntent(CounterIntent intent) {
     switch (intent) {
       case IncrementIntent():
-        emit(state + 1);
+        commit(state + 1);
         break;
     }
   }
@@ -245,7 +354,43 @@ class IntentCounterStore extends IntentStore<int, CounterIntent> {
 class EffectStore extends Store<int> {
   EffectStore() : super(0);
 
-  void increment() => emit(state + 1);
+  void increment() => commit(state + 1);
 
   void notify() => effect('notice');
+}
+
+class HistoryCounterStore extends Store<int> with History<int> {
+  HistoryCounterStore() : super(0);
+
+  void increment() => commit(state + 1);
+
+  void add(int value) => commit(state + value);
+}
+
+class LimitedHistoryCounterStore extends HistoryCounterStore {
+  @override
+  int get historyLimit => 2;
+}
+
+class HistoryEffectStore extends Store<int> with History<int> {
+  HistoryEffectStore() : super(0);
+
+  void incrementAndNotify() {
+    commit(state + 1);
+    effect('changed');
+  }
+}
+
+class StreamCounterStore extends Store<int> {
+  StreamCounterStore(Stream<int> stream) : super(0) {
+    listenTo(
+      stream,
+      onData: (value) {
+        received.add(value);
+        commit(value);
+      },
+    );
+  }
+
+  final List<int> received = <int>[];
 }

@@ -3,7 +3,8 @@
 `IntentStore` is optional structure for workflows where an explicit intent boundary improves readability.
 
 ```text
-Intent -> IntentStore -> State -> UI
+Intent -> IntentStore -> commit(State) -> UI
+                    `-> effect(...)   -> one-shot work
 ```
 
 ```dart
@@ -22,6 +23,7 @@ class LoginStore extends IntentStore<LoginState, LoginIntent> {
   Future<void> onIntent(LoginIntent intent) async {
     switch (intent) {
       case SubmitLogin():
+        // commit(nextState);
         break;
     }
   }
@@ -34,4 +36,4 @@ Dispatch with:
 store.dispatch(const SubmitLogin());
 ```
 
-Do not use intents for every button by default. Normal Store methods remain the simpler default.
+Do not introduce intents for every button by default. Normal Store methods remain the simpler default.

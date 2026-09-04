@@ -1,121 +1,92 @@
-# Popsicle 3.0 Public API Outline
+# Popsicle 2.1 Public API Outline
 
-## Core philosophy
+## Core model
 
 ```text
-UI = f(state)
-
-method / Intent -> Store -> State -> .view()
-                         `-> Effect -> one-shot UI work
+method / Intent / Stream -> Store -> commit(State) -> .ui()
+                                  `-> effect(...)   -> one-shot UI work
 ```
 
-## Recommended declaration namespace
-
-### `Popsicle.inject`
+## Declarations
 
 ```dart
-final api = Popsicle.inject(
-  (_) => ApiClient(),
-);
-
-final repository = Popsicle.inject(
-  (scope) => Repository(scope.get(api)),
-);
-```
-
-### `Popsicle.value`
-
-```dart
-final counter = Popsicle.value(0);
-```
-
-### `Popsicle.create`
-
-```dart
-final counter = Popsicle.create(
-  (_) => CounterStore(),
-);
-```
-
-### `Popsicle.params`
-
-```dart
-final user = Popsicle.params(
-  (scope, int id) => UserStore(
-    id: id,
-    repository: scope.get(repository),
-  ),
-);
+Popsicle.inject(...)
+Popsicle.value(...)
+Popsicle.create(...)
+Popsicle.params(...)
 ```
 
 ## Scope
 
 ```dart
-scope.get(source); // non-reactive access
-scope.use(source); // reactive dependency
+scope.get(source);    // non-reactive access
+scope.use(source);    // reactive dependency
+scope.store(source);  // Store instance
+scope.select(source, selector);
+scope.set(value, next);
+scope.update(value, update);
 ```
 
-Additional extensions:
+## State primitives
 
-```dart
-scope.store(storeSource);
-scope.select(storeSource, selector);
-scope.set(reactiveValue, next);
-scope.update(reactiveValue, update);
+```text
+ReactiveValue<T>
+Store<State>
+IntentStore<State, Intent>
+AsyncState<T>
 ```
 
-## State
-
-### `ReactiveValue<T>`
+## Store output
 
 ```dart
-counter.view(
-  (value) => Text('$value'),
+commit(nextState); // persistent state transition
+effect(value);     // one-shot occurrence
+```
+
+## Store streams
+
+```dart
+listenTo(
+  stream,
+  onData: (value) => commit(...),
+  onError: (error, stackTrace) => effect(...),
 );
 ```
 
-### `Store<State>`
+Subscriptions registered through `listenTo` are owned by the Store and cancelled on Store disposal.
+
+## History
 
 ```dart
-class CounterStore extends Store<int> {
-  CounterStore() : super(0);
-
-  void increment() => emit(state + 1);
+class EditorStore extends Store<EditorState> with History<EditorState> {
+  // ...
 }
 ```
 
-### `IntentStore<State, Intent>`
-
 ```dart
-class CheckoutStore extends IntentStore<CheckoutState, CheckoutIntent> {
-  CheckoutStore() : super(const CheckoutState());
-
-  @override
-  Future<void> onIntent(CheckoutIntent intent) async {}
-}
+store.canUndo;
+store.canRedo;
+store.undoCount;
+store.redoCount;
+store.undo();
+store.redo();
+store.clearHistory();
 ```
 
-## Output channels
+History records committed State only. Effects are never recorded or replayed.
+
+## Flutter UI
 
 ```dart
-emit(nextState); // persistent/replayable state
-effect(value);   // one-shot/non-replayed effect
-```
+reactiveValue.ui((state) => UI);
 
-## UI
-
-Preferred:
-
-```dart
-reactiveValue.view((state) => UI);
-
-storeSource.view(
+storeSource.ui(
   (context, state, store) => UI,
   effect: (context, effect) {},
 );
 ```
 
-Explicit lower-level widgets:
+Explicit widgets:
 
 ```text
 ReactiveBuilder
@@ -124,10 +95,9 @@ PopsicleWidget
 PopsicleBuilder
 ```
 
-## Async
+## Async composition
 
 ```dart
-AsyncState<T>
 Async.combine2(a, b)
 Async.combine3(a, b, c)
 Async.combine4(a, b, c, d)
@@ -147,9 +117,9 @@ container.subscribe(source, listener);
 container.dispose();
 ```
 
-## Advanced compatibility types
+## Advanced declaration types
 
-These remain available but are not the primary application API:
+These remain public for advanced use, while application code should normally prefer `Popsicle.*`:
 
 ```text
 Dependency<T>

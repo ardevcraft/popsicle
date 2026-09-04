@@ -11,7 +11,7 @@ class ReactiveValueExample extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Popsicle.value')),
       body: Center(
-        child: reactiveCounter.view(
+        child: reactiveCounter.ui(
           (count) {
             return Column(
               mainAxisSize: MainAxisSize.min,
