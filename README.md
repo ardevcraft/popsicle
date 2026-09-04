@@ -636,103 +636,34 @@ final subscription = container.subscribe(
 ```
 
 ---
+## Advanced compatibility/declaration types
 
-# Recommended feature structure
-
-Popsicle does not force a folder convention. In feature-first projects, a presentation-specific folder works well:
-
-```text
-features/
-└── profile/
-    ├── data/
-    ├── domain/
-    └── presentation/
-        ├── popsicle/
-        │   ├── profile_state.dart
-        │   ├── profile_intent.dart
-        │   ├── profile_effect.dart
-        │   └── profile_store.dart
-        ├── pages/
-        └── widgets/
-```
-
-For simple features, only create the files that are actually needed.
-
----
-
-# Public vocabulary
-
-```text
-Declarations
-  Popsicle.inject()
-  Popsicle.value()
-  Popsicle.create()
-  Popsicle.params()
-
-Scope
-  get()
-  use()
-  store()
-  select()
-  set()
-  update()
-
-State
-  ReactiveValue<T>
-  Store<State>
-  IntentStore<State, Intent>
-  AsyncState<T>
-
-Store transitions
-  state
-  commit()
-  effect()
-  listenTo()
-
-Optional history
-  History<State>
-  undo()
-  redo()
-  canUndo
-  canRedo
-
-Flutter
-  .ui()
-  PopsicleConsumer
-  PopsicleWidget
-  PopsicleBuilder
-  ReactiveBuilder
-```
+The package still exposes advanced declaration/handle types such as `Dependency`, `Dependency.params`, `StoreHandle`, `StoreParams`, and `PopsicleOverride` for testing, overrides, and migration. New application code should normally start with the `Popsicle.*` declarations above.
 
 ---
 
 # Design principles
 
-Popsicle intentionally keeps several concerns separate:
+1. **UI is a function of state.**
+2. **Persistent state and one-shot effects are different channels.**
+3. **Dependencies are not state.**
+4. **Small state should stay small.**
+5. **Async work should not require another controller hierarchy.**
+6. **Derived state should be derived, not duplicated.**
+7. **Normal Dart methods are the default action API.**
+8. **IntentStore is optional structure, not mandatory ceremony.**
+9. **Framework vocabulary should describe intent, not implementation mechanics.**
 
-```text
-State
-  persistent representation
-  reactive
-  optionally historical
+---
+## Author
 
-Effect
-  occurrence
-  one-shot
-  not historical
+Maintained by **AR Rahman**
+GitHub: [@ardevcraft](https://github.com/ardevcraft)
 
-Stream
-  external input
-  converted into normal Store transitions
+Crafted with ❤️ for open-source community. 🇧🇩
 
-UI
-  projection of State
-```
+[![Stand With Palestine](https://github.com/ardevcraft/bangla_pdf_fixer/raw/master/images/stand_with_plastine.svg)](https://pub.dev/packages/popsicle)
 
-The central rule stays simple:
+## License
 
-```text
-UI = f(state)
-```
-
-See the `example/` project and `wiki/` directory for complete examples and focused guides.
+Popsicle is distributed under the MIT license. See [LICENSE](LICENSE) and [NOTICE](NOTICE) for attribution and retained upstream notices.
