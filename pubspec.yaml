@@ -12,13 +12,13 @@ topics:
   - reactive-programming
   - popsicle
 screenshots:
-  - description: 'Popsicle Package Icon'
+  - description: "Popsicle Package Icon"
     path: images/icon.png
-  - description: 'Popsicle main philosophy image'
+  - description: "Popsicle main philosophy image"
     path: images/philosophy.png
 environment:
-  sdk: '>=3.3.0 <4.0.0'
-  flutter: '>=3.19.0'
+  sdk: ">=3.3.0 <4.0.0"
+  flutter: ">=3.19.0"
 
 dependencies:
   collection: ^1.18.0
@@ -26,7 +26,7 @@ dependencies:
     sdk: flutter
   meta: ^1.9.0
   stack_trace: ^1.10.0
-  state_notifier: '>=0.7.2 <2.0.0'
+  state_notifier: ">=0.7.2 <2.0.0"
 
 dev_dependencies:
   flutter_test:

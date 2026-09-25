@@ -8,6 +8,7 @@
 
 Popsicle is a compact Flutter state-management and dependency-injection package built around four declaration APIs:
 
+Documentation: [@docs](https://ardevcraft.github.io/popsicle/)
 ```dart
 Popsicle.inject(...); // dependencies
 Popsicle.value(...);  // small reactive values
@@ -658,7 +659,7 @@ The package still exposes advanced declaration/handle types such as `Dependency`
 ## Author
 
 Maintained by **AR Rahman**
-GitHub: [@ardevcraft](https://github.com/ardevcraft)
+GitHub: [@arlegacy](https://github.com/ardevcraft)
 
 Crafted with ❤️ for open-source community. 🇧🇩
 
