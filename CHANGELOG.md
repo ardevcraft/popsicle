@@ -1,4 +1,8 @@
-## 2.1.0
+## 2.1.2
+
+ - Documentation Improved
+
+## 2.1.1
 
 - Standardized the high-level Flutter projection API on `.ui()` for Stores and `ReactiveValue`.
 - Added opt-in `History<State>` with:
